@@ -6,22 +6,25 @@ window.VAPORIX_CONFIG={
 document.addEventListener('DOMContentLoaded',()=>{
   const s=document.createElement('style');
   s.textContent=`
-    .logo .vapo-part{color:var(--text)!important}.logo .rix-part{color:var(--pink)!important}
-    #pTiersEditor{grid-column:1/-1;background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:14px}
+    .logo .vapo-part,.brand .vapo-part{color:var(--text)!important}
+    .logo .rix-part,.brand .rix-part{color:var(--pink)!important}
+    #pTiersEditor{grid-column:1/-1;background:var(--panel2,#0f0f14);border:1px solid var(--line,#30303a);border-radius:14px;padding:14px}
     #pTiersEditor .tierHead{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px;font-weight:800}
-    #pTiersEditor .tierHint{font-size:12px;color:var(--muted);font-weight:500;margin-top:3px}
+    #pTiersEditor .tierHint{font-size:12px;color:var(--muted,#8f9098);font-weight:500;margin-top:3px}
     #pTiersEditor .tierRow{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin:8px 0;align-items:center}
-    #pTiersEditor input{width:100%}.tierRemove{width:38px;height:38px;border-radius:10px;background:transparent;border:1px solid var(--line);color:var(--muted)}
-    .dynamic-cat .circle{position:relative}.dynamic-cat .circle img{width:100%;height:100%;object-fit:contain;border-radius:50%;background:var(--panel);position:relative;z-index:1}
+    #pTiersEditor input{width:100%}.tierRemove{width:38px;height:38px;border-radius:10px;background:transparent;border:1px solid var(--line,#30303a);color:var(--muted,#8f9098)}
+    .dynamic-cat .circle{position:relative}.dynamic-cat .circle img{width:100%;height:100%;object-fit:contain;border-radius:50%;background:var(--panel,#16161a);position:relative;z-index:1}
   `;document.head.appendChild(s);
 
-  document.querySelectorAll('.logo').forEach(x=>{x.innerHTML='<span class="vapo-part">VAPO</span><span class="rix-part">RIX</span>'});
+  document.querySelectorAll('.logo,.brand').forEach(x=>{
+    if(!x.querySelector('.vapo-part')) x.innerHTML='<span class="vapo-part">VAPO</span><span class="rix-part">RIX</span>';
+  });
 
   if(document.getElementById('productForm')){
     const w=document.getElementById('pWholesale')?.closest('label');
     if(w&&!document.getElementById('pTiersEditor')){
       const box=document.createElement('div');box.id='pTiersEditor';
-      box.innerHTML='<div class="tierHead"><div>Оптовые цены по количеству<div class="tierHint">Количество → цена за 1 шт. Можно добавить любое число порогов.</div></div><button type="button" class="secondary" id="addTierBtn">+ Добавить порог</button></div><div id="tierRows"></div>';
+      box.innerHTML='<div class="tierHead"><div>Оптовые цены по количеству<div class="tierHint">Количество → цена за 1 шт. Для каждого порога задаётся своя цена.</div></div><button type="button" class="secondary" id="addTierBtn">+ Добавить порог</button></div><div id="tierRows"></div>';
       w.parentElement.insertBefore(box,w.nextElementSibling);
       document.getElementById('addTierBtn').onclick=()=>window.addTierRow();
     }
@@ -29,20 +32,23 @@ document.addEventListener('DOMContentLoaded',()=>{
     window.renderTierRows=(tiers)=>{const r=document.getElementById('tierRows');if(!r)return;r.innerHTML='';(Array.isArray(tiers)?tiers:[]).forEach(window.addTierRow)};
   }
 
-  if(document.getElementById('categories')){
+  const loadDynamicCategories=async()=>{
+    const wrap=document.getElementById('categories')||document.querySelector('.categories');
+    if(!wrap||!window.supabase)return;
     const db=supabase.createClient(window.VAPORIX_CONFIG.SUPABASE_URL,window.VAPORIX_CONFIG.SUPABASE_ANON_KEY);
-    (async()=>{
-      const {data}=await db.from('categories').select('*').eq('is_active',true).order('sort_order').order('name');
-      const wrap=document.getElementById('categories');if(!Array.isArray(data)||!wrap)return;
-      data.filter(c=>c.slug!=='all').forEach(c=>{
-        let b=[...wrap.querySelectorAll('.cat')].find(x=>x.dataset.cat===c.name);
-        if(!b){b=document.createElement('button');b.className='cat dynamic-cat';b.dataset.cat=c.name;b.onclick=()=>window.setCat(c.name);wrap.appendChild(b)}
-        let cir=b.querySelector('.circle');if(!cir){cir=document.createElement('div');cir.className='circle';b.prepend(cir)}
-        if(c.image_url)cir.innerHTML=`<img src="${String(c.image_url).replace(/"/g,'&quot;')}" alt="${String(c.name).replace(/"/g,'&quot;')}">`;
-        let lab=b.querySelector('b');if(!lab){lab=document.createElement('b');b.appendChild(lab)}lab.textContent=c.name;
-      });
-    })();
-  }
+    const {data,error}=await db.from('categories').select('*').eq('is_active',true).order('sort_order').order('name');
+    if(error||!Array.isArray(data))return;
+    data.filter(c=>c.slug!=='all').forEach(c=>{
+      let b=[...wrap.querySelectorAll('.cat')].find(x=>x.dataset.cat===c.name||x.dataset.slug===c.slug);
+      if(!b){b=document.createElement('button');b.className='cat dynamic-cat';b.dataset.cat=c.name;b.dataset.slug=c.slug;wrap.appendChild(b)}
+      let cir=b.querySelector('.circle');if(!cir){cir=document.createElement('div');cir.className='circle';b.prepend(cir)}
+      if(c.image_url)cir.innerHTML=`<img src="${String(c.image_url).replace(/"/g,'&quot;')}" alt="${String(c.name).replace(/"/g,'&quot;')}">`;
+      let lab=b.querySelector('b');if(!lab){lab=document.createElement('b');b.appendChild(lab)}lab.textContent=c.name;
+      b.onclick=()=>window.setCat?.(c.name);
+    });
+  };
+  loadDynamicCategories();
+  setTimeout(loadDynamicCategories,1000);
 
   if(document.getElementById('grid')){
     const db=supabase.createClient(window.VAPORIX_CONFIG.SUPABASE_URL,window.VAPORIX_CONFIG.SUPABASE_ANON_KEY);
