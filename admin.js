@@ -2,11 +2,11 @@ const cfg = window.VAPORIX_CONFIG;
 if(!cfg?.SUPABASE_URL || !cfg?.SUPABASE_ANON_KEY){ throw new Error('config.js не загружен или не настроен.'); }
 const sb = supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY);
 const $ = id => document.getElementById(id);
-let categories = [], products = [];
+let categories = [], products = [], refreshTimer;
 document.addEventListener('DOMContentLoaded', init);
 async function init(){
   $('loginForm').addEventListener('submit', login); $('logoutBtn').addEventListener('click', logout);
-  $('refreshBtn').addEventListener('click', loadAll); $('addProductBtn').addEventListener('click',()=>openProduct()); $('addCategoryBtn').addEventListener('click',()=>openCategory());
+  $('refreshBtn').addEventListener('click', refreshAll); $('addProductBtn').addEventListener('click',()=>openProduct()); $('addCategoryBtn').addEventListener('click',()=>openCategory());
   $('productForm').addEventListener('submit', saveProduct); $('categoryForm').addEventListener('submit', saveCategory); $('productSearch').addEventListener('input',renderProducts);
   $('pImageFile').addEventListener('change',previewProductImage); $('cImageFile').addEventListener('change',previewCategoryImage);
   document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',e=>e.target.closest('dialog').close()));
@@ -18,10 +18,11 @@ async function checkAdmin(){const {data,error}=await sb.rpc('is_admin');return !
 function enterApp(user){$('loginView').classList.add('hidden');$('appView').classList.remove('hidden');$('userEmail').textContent=user.email||'';loadAll()}
 async function logout(){await sb.auth.signOut();location.reload()}
 function showSection(id){document.querySelectorAll('.section').forEach(s=>s.classList.add('hidden'));$(id).classList.remove('hidden');document.querySelectorAll('.nav').forEach(b=>b.classList.toggle('active',b.dataset.section===id));$('sectionTitle').textContent={dashboard:'Обзор',products:'Товары',categories:'Категории',orders:'Заказы'}[id]||id;if(id==='products')renderProducts();if(id==='categories')renderCategories();if(id==='orders')loadOrders()}
+async function refreshAll(){const button=$('refreshBtn');clearTimeout(refreshTimer);button.disabled=true;button.textContent='↻ Обновляю…';try{const ok=await loadAll();button.textContent=ok===false?'Ошибка — повторить':'✓ Обновлено';if(ok!==false)refreshTimer=setTimeout(()=>button.textContent='↻ Обновить',2500)}catch(error){button.textContent='Ошибка — повторить';toast(error.message||'Не удалось обновить данные.')}finally{button.disabled=false}}
 async function loadAll(){
   const [c,p,o]=await Promise.all([sb.from('categories').select('*').order('sort_order').order('name'),sb.from('products').select('*, categories(name)').order('created_at',{ascending:false}),sb.from('orders').select('*').order('created_at',{ascending:false})]);
-  if(c.error){toast(c.error.message);return} if(p.error){toast(p.error.message);return}
-  categories=c.data||[];products=p.data||[];window.__vaporixProducts=products;$('statCategories').textContent=categories.length;$('statProducts').textContent=products.length;$('statActive').textContent=products.filter(x=>x.active).length;$('statOrders').textContent=(o.data||[]).length;renderProducts();renderCategories();renderOrders(o.data||[]);fillCategorySelect()
+  if(c.error){toast(c.error.message);return false} if(p.error){toast(p.error.message);return false}
+  categories=c.data||[];products=p.data||[];window.__vaporixProducts=products;$('statCategories').textContent=categories.length;$('statProducts').textContent=products.length;$('statActive').textContent=products.filter(x=>x.active).length;$('statOrders').textContent=(o.data||[]).length;renderProducts();renderCategories();renderOrders(o.data||[]);fillCategorySelect();return true
 }
 function renderProducts(){const q=($('productSearch')?.value||'').toLowerCase();$('productsBody').innerHTML=products.filter(p=>`${p.name} ${p.slug}`.toLowerCase().includes(q)).map(p=>`<tr><td>${p.image_url?`<img class="thumb" src="${esc(p.image_url)}">`:'—'}</td><td><strong>${esc(p.name)}</strong><br><small class="muted">${esc(p.slug)}</small></td><td>${esc(p.categories?.name||'—')}</td><td>${money(p.price)}</td><td>${esc(p.stock)}</td><td><span class="badge ${p.active?'ok':'off'}">${p.active?'Активен':'Скрыт'}</span></td><td><div class="rowActions"><button onclick="openProduct(${p.id})">Изменить</button><button onclick="deleteProduct(${p.id})">Удалить</button></div></td></tr>`).join('')||'<tr><td colspan="7" class="muted">Товаров нет</td></tr>'}
 function renderCategories(){$('categoriesBody').innerHTML=categories.map(c=>`<tr><td>${c.image_url?`<img class="thumb" src="${esc(c.image_url)}">`:'—'}</td><td><strong>${esc(c.name)}</strong></td><td>${esc(c.slug)}</td><td><div class="rowActions"><button onclick="openCategory(${c.id})">Изменить</button><button onclick="deleteCategory(${c.id})">Удалить</button></div></td></tr>`).join('')||'<tr><td colspan="4" class="muted">Категорий нет</td></tr>'}
