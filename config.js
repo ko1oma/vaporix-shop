@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     #pTiersEditor .tierHint{font-size:12px;color:var(--muted,#8f9098);font-weight:500;margin-top:3px}
     #pTiersEditor .tierRow{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin:8px 0;align-items:center}
     #pTiersEditor input{width:100%}.tierRemove{width:38px;height:38px;border-radius:10px;background:transparent;border:1px solid var(--line,#30303a);color:var(--muted,#8f9098)}
-    .dynamic-cat .circle{position:relative}.dynamic-cat .circle img{width:100%;height:100%;object-fit:contain;border-radius:50%;background:var(--panel,#16161a);position:relative;z-index:1}
+    .dynamic-cat .circle{position:relative;overflow:hidden;padding:0!important}.dynamic-cat .circle:before{display:none}.dynamic-cat .circle img{display:block;width:100%;height:100%;object-fit:cover;border-radius:50%;background:var(--panel,#16161a);position:relative;z-index:1}
   `;document.head.appendChild(s);
 
   document.querySelectorAll('.logo,.brand').forEach(x=>{
@@ -41,8 +41,10 @@ document.addEventListener('DOMContentLoaded',()=>{
     const {data,error}=await db.from('categories').select('*').eq('is_active',true).order('sort_order').order('name');
     if(error||!Array.isArray(data))return;
     data.filter(c=>c.slug!=='all').forEach(c=>{
-      let b=[...wrap.querySelectorAll('.cat')].find(x=>x.dataset.cat===c.name||x.dataset.slug===c.slug);
-      if(!b){b=document.createElement('button');b.className='cat dynamic-cat';b.dataset.cat=c.name;b.dataset.slug=c.slug;wrap.appendChild(b)}
+      const normalize=v=>String(v||'').toLowerCase().replace(/\s+/g,' ').trim();
+      let b=[...wrap.querySelectorAll('.cat')].find(x=>x.dataset.cat===c.name||x.dataset.slug===c.slug||normalize(x.querySelector('b')?.textContent)===normalize(c.name));
+      if(!b){b=document.createElement('button');b.className='cat';wrap.appendChild(b)}
+      b.classList.add('dynamic-cat');b.dataset.cat=c.name;b.dataset.slug=c.slug;
       let cir=b.querySelector('.circle');if(!cir){cir=document.createElement('div');cir.className='circle';b.prepend(cir)}
       if(c.image_url)cir.innerHTML=`<img src="${String(c.image_url).replace(/"/g,'&quot;')}" alt="${String(c.name).replace(/"/g,'&quot;')}">`;
       let lab=b.querySelector('b');if(!lab){lab=document.createElement('b');b.appendChild(lab)}lab.textContent=c.name;
