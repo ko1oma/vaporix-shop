@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>VAPORIX — Админка</title>
-  <link rel="stylesheet" href="admin.css">
+  <link rel="stylesheet" href="admin.css?v=3">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 .imagePreview{display:none;width:110px;height:110px;object-fit:contain;border-radius:18px;background:#16161a;border:1px solid rgba(255,255,255,.08);padding:8px;margin:4px 0 10px}.categoryPreview{border-radius:50%}.muted{font-size:12px}
@@ -13,7 +13,7 @@
 <body>
   <div id="loginView" class="center">
     <form id="loginForm" class="card login">
-      <div class="brand">VAP<span>ORIX</span></div>
+      <div class="brand"><span class="vapo-part">VAPO</span><span class="rix-part">RIX</span></div>
       <h1>Админ-панель</h1>
       <p class="muted">Войдите, чтобы управлять магазином.</p>
       <label>Email<input id="email" type="email" required autocomplete="email"></label>
@@ -25,7 +25,7 @@
 
   <div id="appView" class="hidden">
     <aside class="sidebar">
-      <div class="brand">VAP<span>ORIX</span></div>
+      <div class="brand"><span class="vapo-part">VAPO</span><span class="rix-part">RIX</span></div>
       <nav>
         <button class="nav active" data-section="dashboard">📊 Обзор</button>
         <button class="nav" data-section="products">📦 Товары</button>
@@ -106,7 +106,7 @@
         <label>Slug<input id="pSlug" required></label>
         <label>Категория<select id="pCategory"></select></label>
         <label>Цена (€)<input id="pPrice" type="number" min="0" step="0.01" required></label>
-        <label>Оптовая цена (€)<input id="pWholesale" type="number" min="0" step="0.01"></label>
+        <label>Цена за 1 шт. в опте (€)<input id="pWholesale" type="number" min="0" step="0.01"><small class="muted">Базовая оптовая цена за одну штуку, если не используется отдельный порог.</small></label>
         <label>Остаток<input id="pStock" type="number" min="0" step="1" value="0" required></label>
         <label class="wide">Фотография товара<input id="pImageFile" type="file" accept="image/*"><small class="muted">Выбери фото с компьютера. Оно загрузится в Storage после сохранения товара.</small></label>
         <label class="wide">Фото URL<input id="pImage" placeholder="https://..."></label>
