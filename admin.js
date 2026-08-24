@@ -1,0 +1,216 @@
+const cfg = window.VAPORIX_CONFIG;
+const sb = supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY);
+
+const $ = id => document.getElementById(id);
+let categories = [];
+let products = [];
+
+document.addEventListener("DOMContentLoaded", init);
+
+async function init(){
+  $("loginForm").addEventListener("submit", login);
+  $("logoutBtn").addEventListener("click", logout);
+  $("refreshBtn").addEventListener("click", loadAll);
+  $("addProductBtn").addEventListener("click", () => openProduct());
+  $("addCategoryBtn").addEventListener("click", () => openCategory());
+  $("productForm").addEventListener("submit", saveProduct);
+  $("categoryForm").addEventListener("submit", saveCategory);
+  $("productSearch").addEventListener("input", renderProducts);
+  $("pImageFile").addEventListener("change", previewProductImage);
+  $("cImageFile").addEventListener("change", previewCategoryImage);
+
+  document.querySelectorAll("[data-close]").forEach(b => b.addEventListener("click", e => e.target.closest("dialog").close()));
+  document.querySelectorAll(".nav").forEach(b => b.addEventListener("click", () => showSection(b.dataset.section)));
+  document.querySelectorAll("[data-go]").forEach(b => b.addEventListener("click", () => showSection(b.dataset.go)));
+
+  const {data:{session}} = await sb.auth.getSession();
+  if(session) {
+  if(await checkAdmin()) enterApp(session.user);
+  }
+}
+
+async function login(e){
+  e.preventDefault();
+  $("loginError").textContent = "";
+  const {data,error} = await sb.auth.signInWithPassword({email:$("email").value,password:$("password").value});
+  if(error){ $("loginError").textContent = error.message; return; }
+  if(!(await checkAdmin())){
+    await sb.auth.signOut();
+    $("loginError").textContent = "У этого аккаунта нет прав администратора.";
+    return;
+  }
+  enterApp(data.user);
+}
+
+async function checkAdmin(){
+  const {data,error} = await sb.rpc("is_admin");
+  return !error && data === true;
+}
+
+function enterApp(user){
+  $("loginView").classList.add("hidden");
+  $("appView").classList.remove("hidden");
+  $("userEmail").textContent = user.email || "";
+  loadAll();
+}
+
+async function logout(){
+  await sb.auth.signOut();
+  location.reload();
+}
+
+function showSection(id){
+  document.querySelectorAll(".section").forEach(s=>s.classList.add("hidden"));
+  $(id).classList.remove("hidden");
+  document.querySelectorAll(".nav").forEach(b=>b.classList.toggle("active",b.dataset.section===id));
+  const titles={dashboard:"Обзор",products:"Товары",categories:"Категории",orders:"Заказы"};
+  $("sectionTitle").textContent=titles[id]||id;
+  if(id==="products") renderProducts();
+  if(id==="categories") renderCategories();
+  if(id==="orders") loadOrders();
+}
+
+async function loadAll(){
+  const [c,p,o] = await Promise.all([
+    sb.from("categories").select("*").order("name"),
+    sb.from("products").select("*, categories(name)").order("created_at",{ascending:false}),
+    sb.from("orders").select("*").order("created_at",{ascending:false})
+  ]);
+  if(c.error){ toast(c.error.message); return; }
+  if(p.error){ toast(p.error.message); return; }
+  categories=c.data||[]; products=p.data||[];
+  $("statCategories").textContent=categories.length;
+  $("statProducts").textContent=products.length;
+  $("statActive").textContent=products.filter(x=>x.active).length;
+  $("statOrders").textContent=(o.data||[]).length;
+  renderProducts(); renderCategories(); renderOrders(o.data||[]); fillCategorySelect();
+}
+
+function renderProducts(){
+  const q=($("productSearch")?.value||"").toLowerCase();
+  $("productsBody").innerHTML=products.filter(p=>`${p.name} ${p.slug}`.toLowerCase().includes(q)).map(p=>`
+    <tr>
+      <td><img class="thumb" src="${esc(p.image_url||"")}" onerror="this.style.visibility='hidden'"></td>
+      <td><strong>${esc(p.name)}</strong><br><small class="muted">${esc(p.slug)}</small></td>
+      <td>${esc(p.categories?.name||"—")}</td>
+      <td>${money(p.price)}</td>
+      <td>${p.stock}</td>
+      <td><span class="badge ${p.active?"ok":"off"}">${p.active?"Активен":"Скрыт"}</span></td>
+      <td><div class="rowActions"><button onclick="openProduct('${p.id}')">Изменить</button><button onclick="deleteProduct('${p.id}')">Удалить</button></div></td>
+    </tr>`).join("");
+}
+
+function renderCategories(){
+  $("categoriesBody").innerHTML=categories.map(c=>`
+    <tr><td><img class="thumb" src="${esc(c.image_url||"")}" onerror="this.style.visibility='hidden'"></td><td><strong>${esc(c.name)}</strong></td><td>${esc(c.slug)}</td>
+    <td><div class="rowActions"><button onclick="openCategory('${c.id}')">Изменить</button><button onclick="deleteCategory('${c.id}')">Удалить</button></div></td></tr>`).join("");
+}
+
+function renderOrders(rows){
+  $("ordersBody").innerHTML=rows.map(o=>`
+    <tr><td>${esc(o.order_number||o.id.slice(0,8))}</td><td>${esc(o.customer_name||"—")}</td>
+    <td>${money(o.total)}</td><td><span class="badge">${esc(o.status||"new")}</span></td>
+    <td>${new Date(o.created_at).toLocaleString("ru-RU")}</td>
+    <td><button onclick="changeOrderStatus('${o.id}','${o.status||"new"}')">Статус</button></td></tr>`).join("");
+}
+
+function fillCategorySelect(){
+  $("pCategory").innerHTML='<option value="">Без категории</option>'+categories.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join("");
+}
+
+function openProduct(id=null){
+  $("productError").textContent="";
+  $("productForm").reset(); fillCategorySelect();
+  $("pImagePreview").style.display="none";
+  $("productId").value=id||"";
+  $("productDialogTitle").textContent=id?"Изменить товар":"Новый товар";
+  if(id){
+    const p=products.find(x=>x.id===id); if(!p)return;
+    $("pName").value=p.name||""; $("pSlug").value=p.slug||""; $("pCategory").value=p.category_id||"";
+    $("pPrice").value=p.price??""; $("pWholesale").value=p.wholesale_price??"";
+    $("pStock").value=p.stock??0; $("pImage").value=p.image_url||""; $("pDescription").value=p.description||"";
+    if(p.image_url){$("pImagePreview").src=p.image_url;$("pImagePreview").style.display="block";}
+    $("pActive").checked=!!p.active;
+  }
+  $("productDialog").showModal();
+}
+
+async function saveProduct(e){
+  e.preventDefault(); $("productError").textContent="";
+  const id=$("productId").value;
+  let imageUrl=$("pImage").value.trim()||null;
+  const file=$("pImageFile").files?.[0];
+  if(file){
+    try{ imageUrl=await uploadImage(file, "products"); }
+    catch(err){ $("productError").textContent=err.message||String(err); return; }
+  }
+  const payload={
+    name:$("pName").value.trim(), slug:$("pSlug").value.trim(), category_id:$("pCategory").value||null,
+    price:Number($("pPrice").value), wholesale_price:$("pWholesale").value?Number($("pWholesale").value):null,
+    stock:Number($("pStock").value), image_url:imageUrl,
+    description:$("pDescription").value.trim()||null, active:$("pActive").checked
+  };
+  const res=id?await sb.from("products").update(payload).eq("id",id):await sb.from("products").insert(payload);
+  if(res.error){$("productError").textContent=res.error.message;return}
+  $("productDialog").close(); await loadAll(); showSection("products");
+}
+async function deleteProduct(id){
+  if(!confirm("Удалить товар?"))return;
+  const {error}=await sb.from("products").delete().eq("id",id);
+  if(error) return toast(error.message);
+  await loadAll();
+}
+
+function openCategory(id=null){
+  $("categoryError").textContent=""; $("categoryForm").reset(); $("categoryId").value=id||"";
+  $("cImagePreview").style.display="none";
+  if(id){
+    const c=categories.find(x=>x.id===id); if(!c)return;
+    $("cName").value=c.name||""; $("cSlug").value=c.slug||""; $("cImage").value=c.image_url||"";
+    if(c.image_url){$("cImagePreview").src=c.image_url;$("cImagePreview").style.display="block";}
+  }
+  $("categoryDialog").showModal();
+}
+async function saveCategory(e){
+  e.preventDefault(); $("categoryError").textContent="";
+  const id=$("categoryId").value;
+  let imageUrl=$("cImage").value.trim()||null;
+  const file=$("cImageFile").files?.[0];
+  if(file){
+    try{ imageUrl=await uploadImage(file, "categories"); }
+    catch(err){ $("categoryError").textContent=err.message||String(err); return; }
+  }
+  const payload={name:$("cName").value.trim(),slug:$("cSlug").value.trim(),image_url:imageUrl};
+  const res=id?await sb.from("categories").update(payload).eq("id",id):await sb.from("categories").insert(payload);
+  if(res.error){$("categoryError").textContent=res.error.message;return}
+  $("categoryDialog").close(); await loadAll(); showSection("categories");
+}
+async function deleteCategory(id){
+  if(!confirm("Удалить категорию? Товары этой категории станут без категории."))return;
+  const {error}=await sb.from("categories").delete().eq("id",id);
+  if(error)return toast(error.message); await loadAll();
+}
+async function loadOrders(){const {data,error}=await sb.from("orders").select("*").order("created_at",{ascending:false});if(error)return toast(error.message);renderOrders(data||[])}
+async function changeOrderStatus(id,current){
+  const next=prompt("Новый статус: new / paid / processing / shipped / completed / cancelled",current);
+  if(!next)return;
+  const {error}=await sb.from("orders").update({status:next}).eq("id",id);
+  if(error)return toast(error.message); await loadOrders();
+}
+function safeFileName(name){return name.toLowerCase().replace(/[^a-z0-9._-]+/g,"-").replace(/-+/g,"-").replace(/^-|-$/g,"")||"image";}
+async function uploadImage(file,folder){
+  if(!file.type.startsWith("image/")) throw new Error("Можно загружать только изображения.");
+  if(file.size>8*1024*1024) throw new Error("Файл слишком большой. Максимум 8 МБ.");
+  const ext=(file.name.split(".").pop()||"jpg").toLowerCase();
+  const path=`${folder}/${Date.now()}-${crypto.randomUUID()}.${safeFileName(ext)}`;
+  const {error}=await sb.storage.from("product-images").upload(path,file,{cacheControl:"3600",upsert:false});
+  if(error) throw error;
+  const {data}=sb.storage.from("product-images").getPublicUrl(path);
+  if(!data?.publicUrl) throw new Error("Не удалось получить публичный URL изображения.");
+  return data.publicUrl;
+}
+function previewProductImage(e){const f=e.target.files?.[0];if(!f)return;$("pImagePreview").src=URL.createObjectURL(f);$("pImagePreview").style.display="block";}
+function previewCategoryImage(e){const f=e.target.files?.[0];if(!f)return;$("cImagePreview").src=URL.createObjectURL(f);$("cImagePreview").style.display="block";}
+function money(v){return `${Number(v||0).toFixed(2)} €`}
+function esc(v){return String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
+function toast(msg){alert(msg)}

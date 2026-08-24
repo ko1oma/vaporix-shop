@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>VAPORIX — Админка</title>
+  <link rel="stylesheet" href="admin.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+.imagePreview{display:none;width:110px;height:110px;object-fit:contain;border-radius:18px;background:#16161a;border:1px solid rgba(255,255,255,.08);padding:8px;margin:4px 0 10px}.categoryPreview{border-radius:50%}.muted{font-size:12px}
+</style>
+</head>
+<body>
+  <div id="loginView" class="center">
+    <form id="loginForm" class="card login">
+      <div class="brand">VAP<span>ORIX</span></div>
+      <h1>Админ-панель</h1>
+      <p class="muted">Войдите, чтобы управлять магазином.</p>
+      <label>Email<input id="email" type="email" required autocomplete="email"></label>
+      <label>Пароль<input id="password" type="password" required autocomplete="current-password"></label>
+      <button class="primary" type="submit">Войти</button>
+      <div id="loginError" class="error"></div>
+    </form>
+  </div>
+
+  <div id="appView" class="hidden">
+    <aside class="sidebar">
+      <div class="brand">VAP<span>ORIX</span></div>
+      <nav>
+        <button class="nav active" data-section="dashboard">📊 Обзор</button>
+        <button class="nav" data-section="products">📦 Товары</button>
+        <button class="nav" data-section="categories">🗂 Категории</button>
+        <button class="nav" data-section="orders">🧾 Заказы</button>
+      </nav>
+      <button id="logoutBtn" class="logout">Выйти</button>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <h1 id="sectionTitle">Обзор</h1>
+          <span id="userEmail" class="muted"></span>
+        </div>
+        <button id="refreshBtn" class="ghost">↻ Обновить</button>
+      </header>
+
+      <section id="dashboard" class="section">
+        <div class="stats">
+          <div class="stat card"><span>Товаров</span><strong id="statProducts">0</strong></div>
+          <div class="stat card"><span>Категорий</span><strong id="statCategories">0</strong></div>
+          <div class="stat card"><span>Активных</span><strong id="statActive">0</strong></div>
+          <div class="stat card"><span>Заказов</span><strong id="statOrders">0</strong></div>
+        </div>
+        <div class="card">
+          <h2>Быстрые действия</h2>
+          <div class="actions">
+            <button class="primary" data-go="products">+ Добавить товар</button>
+            <button class="secondary" data-go="categories">Управление категориями</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="products" class="section hidden">
+        <div class="toolbar">
+          <input id="productSearch" placeholder="Поиск товара...">
+          <button id="addProductBtn" class="primary">+ Добавить товар</button>
+        </div>
+        <div class="card tableWrap">
+          <table>
+            <thead><tr><th>Фото</th><th>Товар</th><th>Категория</th><th>Цена</th><th>Остаток</th><th>Статус</th><th></th></tr></thead>
+            <tbody id="productsBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="categories" class="section hidden">
+        <div class="toolbar">
+          <h2>Категории</h2>
+          <button id="addCategoryBtn" class="primary">+ Добавить категорию</button>
+        </div>
+        <div class="card tableWrap">
+          <table>
+            <thead><tr><th>Фото</th><th>Название</th><th>Slug</th><th></th></tr></thead>
+            <tbody id="categoriesBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="orders" class="section hidden">
+        <div class="card tableWrap">
+          <table>
+            <thead><tr><th>№</th><th>Клиент</th><th>Сумма</th><th>Статус</th><th>Дата</th><th></th></tr></thead>
+            <tbody id="ordersBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="productDialog">
+    <form id="productForm" class="modal">
+      <div class="modalHead"><h2 id="productDialogTitle">Новый товар</h2><button type="button" class="icon" data-close>×</button></div>
+      <input type="hidden" id="productId">
+      <div class="grid2">
+        <label>Название<input id="pName" required></label>
+        <label>Slug<input id="pSlug" required></label>
+        <label>Категория<select id="pCategory"></select></label>
+        <label>Цена (€)<input id="pPrice" type="number" min="0" step="0.01" required></label>
+        <label>Оптовая цена (€)<input id="pWholesale" type="number" min="0" step="0.01"></label>
+        <label>Остаток<input id="pStock" type="number" min="0" step="1" value="0" required></label>
+        <label class="wide">Фотография товара<input id="pImageFile" type="file" accept="image/*"><small class="muted">Выбери фото с компьютера. Оно загрузится в Storage после сохранения товара.</small></label>
+        <label class="wide">Фото URL<input id="pImage" placeholder="https://..."></label>
+        <img id="pImagePreview" class="imagePreview" alt="Предпросмотр товара">
+        <label class="wide">Описание<textarea id="pDescription" rows="4"></textarea></label>
+        <label class="check"><input id="pActive" type="checkbox" checked> Показывать товар в магазине</label>
+      </div>
+      <div id="productError" class="error"></div>
+      <div class="modalActions"><button type="button" class="secondary" data-close>Отмена</button><button class="primary" type="submit">Сохранить</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="categoryDialog">
+    <form id="categoryForm" class="modal">
+      <div class="modalHead"><h2>Категория</h2><button type="button" class="icon" data-close>×</button></div>
+      <input type="hidden" id="categoryId">
+      <label>Название<input id="cName" required></label>
+      <label>Slug<input id="cSlug" required></label>
+      <label class="wide">Иконка категории<input id="cImageFile" type="file" accept="image/*"><small class="muted">Выбери фотографию для кружочка категории.</small></label>
+      <img id="cImagePreview" class="imagePreview categoryPreview" alt="Предпросмотр категории">
+      <label class="wide">Иконка URL<input id="cImage" placeholder="https://..."></label>
+      <div id="categoryError" class="error"></div>
+      <div class="modalActions"><button type="button" class="secondary" data-close>Отмена</button><button class="primary" type="submit">Сохранить</button></div>
+    </form>
+  </dialog>
+
+  <script src="config.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>
