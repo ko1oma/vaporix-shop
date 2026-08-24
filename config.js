@@ -33,8 +33,10 @@ document.addEventListener('DOMContentLoaded',()=>{
   }
 
   const loadDynamicCategories=async()=>{
-    const wrap=document.getElementById('categories')||document.querySelector('.categories');
-    if(!wrap||!window.supabase)return;
+    // Run only on the storefront. The admin panel also has #categories, but it is a table section—not the storefront category strip.
+    const storefrontGrid=document.getElementById('grid');
+    const wrap=storefrontGrid&&(document.getElementById('categories')||document.querySelector('.categories'));
+    if(!storefrontGrid||!wrap||!window.supabase)return;
     const db=supabase.createClient(window.VAPORIX_CONFIG.SUPABASE_URL,window.VAPORIX_CONFIG.SUPABASE_ANON_KEY);
     const {data,error}=await db.from('categories').select('*').eq('is_active',true).order('sort_order').order('name');
     if(error||!Array.isArray(data))return;
