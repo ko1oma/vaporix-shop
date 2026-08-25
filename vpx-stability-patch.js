@@ -39,3 +39,16 @@ function patch(){
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(patch,50),{once:true});else setTimeout(patch,50);
 })();
+
+// Load the current PUFF HUB order flow after the existing stability patch.
+(function(){
+  function loadOrderFlow(){
+    if(document.querySelector('script[data-puffhub-order-flow]')) return;
+    const s=document.createElement('script');
+    s.src='order_flow_runtime.js?v=1';
+    s.dataset.puffhubOrderFlow='1';
+    document.body.appendChild(s);
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',()=>setTimeout(loadOrderFlow,80),{once:true});
+  else setTimeout(loadOrderFlow,80);
+})();
