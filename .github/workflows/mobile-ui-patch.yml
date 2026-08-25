@@ -1,0 +1,58 @@
+name: Apply mobile UI patch
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch index.html
+        shell: python
+        run: |
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          marker='/* VAPORIX MOBILE UI PATCH v2 */'
+          if marker in s:
+              print('already patched')
+              raise SystemExit(0)
+          css=r'''<style>
+/* VAPORIX MOBILE UI PATCH v2 */
+@media (max-width:700px){
+html,body{overflow-x:hidden;overscroll-behavior-x:none}body{padding-bottom:0!important}.app{padding:12px 12px 105px!important}
+.top{display:flex!important;flex-wrap:nowrap!important;gap:10px!important;margin-bottom:14px!important}.top .logo{font-size:20px!important;flex:1;white-space:nowrap}
+.top .search{order:0!important;flex:0 0 42px!important;width:42px!important;height:42px!important;padding:0!important;border-radius:50%!important;max-width:42px!important;background:#171719!important;border:1px solid #34343a!important;color:transparent!important;font-size:0!important;cursor:pointer}.top .search::placeholder{color:transparent}.top .search.search-open{flex:1 1 auto!important;width:auto!important;max-width:none!important;border-radius:14px!important;padding:0 13px!important;color:#fff!important;font-size:14px!important}
+.top .account{gap:7px!important}.top .account .iconbtn{width:42px!important;height:42px!important}
+.categories{gap:8px!important;overflow-x:auto!important;overflow-y:hidden!important;scroll-snap-type:x proximity!important;padding:0 2px 8px!important;-webkit-overflow-scrolling:touch!important}.categories::-webkit-scrollbar{display:none}.cat{flex:0 0 78px!important;min-width:78px!important;scroll-snap-align:start}.cat .circle{width:68px!important;height:68px!important}.cat b{font-size:11px!important;line-height:1.12!important;margin-top:6px!important}
+.bottom{left:50%!important;bottom:max(10px,env(safe-area-inset-bottom))!important;width:calc(100% - 24px)!important;height:62px!important;display:grid!important;grid-template-columns:repeat(4,1fr)!important;gap:3px!important;padding:5px!important;border-radius:32px!important;transform:translateX(-50%)!important;z-index:100!important}.nav{min-width:0!important;width:100%!important;height:50px!important;display:flex!important;align-items:center!important;justify-content:center!important;gap:6px!important;padding:0 8px!important;border-radius:25px!important;transition:background .24s ease,color .24s ease,box-shadow .24s ease!important}.nav.active{background:linear-gradient(90deg,var(--pink),var(--purple))!important;color:#111!important;box-shadow:0 4px 18px #7c42ff40!important}.nav span{font-size:12px!important;display:none!important;font-weight:800!important}.nav.active span{display:inline!important}
+.hero{min-height:185px!important;padding:20px!important;border-radius:23px!important}.grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+.drawer{background:rgba(0,0,0,.48)!important;backdrop-filter:blur(9px)!important;-webkit-backdrop-filter:blur(9px)!important;display:none!important;opacity:0!important;transition:opacity .28s ease!important}.drawer.show{display:block!important;opacity:1!important}.drawer-panel{top:auto!important;right:0!important;bottom:0!important;width:100%!important;height:auto!important;max-height:82vh!important;border:0!important;border-radius:28px 28px 0 0!important;padding:20px 18px calc(22px + env(safe-area-inset-bottom))!important;transform:translateY(100%)!important;transition:transform .32s cubic-bezier(.22,.9,.35,1)!important;box-shadow:0 -20px 60px #0009!important}.drawer.show .drawer-panel{transform:translateY(0)!important}.drawer-panel:before{content:'';display:block;width:42px;height:5px;border-radius:99px;background:#666;margin:-6px auto 15px}.close{position:absolute!important;right:15px!important;top:15px!important;border-radius:50%!important;width:36px!important;height:36px!important;padding:0!important}.checkout{margin-top:8px!important}
+.profile h1{font-size:28px!important;margin:12px 0!important}.settings{padding:10px 14px!important;border-radius:20px!important;max-width:none!important}.setting{padding:12px 0!important;font-size:14px!important}.setting small{font-size:11px!important}
+}
+</style>'''
+          js=r'''<script>
+/* VAPORIX MOBILE UI PATCH v2 */
+(function(){
+function navActive(btn){document.querySelectorAll('.bottom .nav').forEach(function(x){x.classList.remove('active')});if(btn)btn.classList.add('active')}
+window.addEventListener('DOMContentLoaded',function(){var bottom=document.querySelector('.bottom');if(!bottom)return;var navs=bottom.querySelectorAll('.nav');navs.forEach(function(n,i){n.addEventListener('click',function(){navActive(n)})});var search=document.getElementById('search');if(search){search.type='search';search.setAttribute('aria-label','Поиск');search.addEventListener('click',function(){if(window.innerWidth<=700&&!search.classList.contains('search-open')){search.classList.add('search-open');search.focus()}});search.addEventListener('blur',function(){if(!search.value)search.classList.remove('search-open')})}var age=document.getElementById('age');if(age){age.style.pointerEvents='auto';var b=age.querySelector('button');if(b){b.style.pointerEvents='auto';b.style.position='relative';b.style.zIndex='100'}}});
+var oldShowCart=window.showCart;if(typeof oldShowCart==='function')window.showCart=function(){oldShowCart();setTimeout(function(){navActive(document.querySelectorAll('.bottom .nav')[1])},0)};
+var oldShowProfile=window.showProfile;if(typeof oldShowProfile==='function')window.showProfile=function(){oldShowProfile();setTimeout(function(){navActive(document.querySelectorAll('.bottom .nav')[3])},0)};
+var oldShowCatalog=window.showCatalog;if(typeof oldShowCatalog==='function')window.showCatalog=function(){oldShowCatalog();setTimeout(function(){navActive(document.querySelectorAll('.bottom .nav')[0])},0)};
+})();
+</script>'''
+          s=s.replace('</style>','</style>'+css,1)
+          s=s.replace('</body>',js+'</body>',1)
+          p.write_text(s,encoding='utf-8')
+      - name: Commit patched index
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git diff --cached --quiet && exit 0
+          git commit -m 'Fix mobile navigation and bottom sheets'
+          git push
