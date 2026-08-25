@@ -1,0 +1,50 @@
+name: Fix storefront categories
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Patch storefront
+        shell: python
+        run: |
+          from pathlib import Path
+
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+
+          scripts = '<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="config.js?v=categories"></script>'
+          if 'config.js?v=categories' not in s:
+              marker = '</head>'
+              if marker not in s:
+                  raise SystemExit('index.html: </head> not found')
+              s = s.replace(marker, scripts + marker, 1)
+              p.write_text(s, encoding='utf-8')
+
+          c = Path('config.js')
+          cs = c.read_text(encoding='utf-8')
+          cs2 = cs.replace("setCat?.(isAll ? 'all' : c.name)", "setCat?.(isAll ? 'Все товары' : c.name)")
+          if cs2 != cs:
+              c.write_text(cs2, encoding='utf-8')
+
+      - name: Commit patch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html config.js
+          if git diff --cached --quiet; then
+            echo 'No changes needed'
+            exit 0
+          fi
+          git commit -m 'Fix dynamic storefront categories'
+          git push
