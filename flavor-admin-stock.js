@@ -1,5 +1,5 @@
 (function(){
-  const wait=()=>document.getElementById('productForm')&&window.sb;
+  const wait=()=>document.getElementById('productForm')&&(typeof sb!=='undefined');
   const start=()=>{
     if(!wait()) return setTimeout(start,200);
     const $id=id=>document.getElementById(id);
