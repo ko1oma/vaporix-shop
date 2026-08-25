@@ -1,36 +1,32 @@
-name: Inspect card source
+name: Finalize card fix
 on:
   push:
     paths:
       - '.github/workflows/inspect-card.yml'
 jobs:
-  inspect:
+  finalize:
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v4
-      - name: Extract exact card render source
+      - name: Bump stability patch cache version
         run: |
           python - <<'PY'
           from pathlib import Path
-          s=Path('index.html').read_text(encoding='utf-8')
-          needles=['class="add-cart"','class="card-qty"','class="card-actions"','addToCart','showInfo(','function render(']
-          out=[]
-          for n in needles:
-              poss=[]; start=0
-              while True:
-                  p=s.find(n,start)
-                  if p<0: break
-                  poss.append(p); start=p+1
-              out.append('\n===== '+n+' count='+str(len(poss))+' =====')
-              for p in poss[-5:]: out.append('\n--- POS '+str(p)+' ---\n'+s[max(0,p-2200):p+3500])
-          Path('card-source-debug.txt').write_text('\n'.join(out),encoding='utf-8')
+          p=Path('config.js')
+          s=p.read_text(encoding='utf-8')
+          s=s.replace("vpx-stability-patch.js?v=1","vpx-stability-patch.js?v=5")
+          p.write_text(s,encoding='utf-8')
           PY
-      - name: Commit debug source
+      - name: Clean diagnostics
+        run: rm -f card-source-debug.txt
+      - name: Commit finalization
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add card-source-debug.txt
-          git commit -m 'Refresh card source diagnostic [skip ci]' || exit 0
+          git add config.js
+          git rm -f card-source-debug.txt 2>/dev/null || true
+          git rm -f .github/workflows/inspect-card.yml
+          git commit -m 'Finalize real add-cart fix and remove diagnostics [skip ci]'
           git push
