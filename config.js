@@ -111,19 +111,26 @@ document.addEventListener('DOMContentLoaded',()=>{
     if(!window.supabase||!window.VAPORIX_CONFIG?.SUPABASE_URL||typeof products==='undefined')return;
     try{
       const db=supabase.createClient(window.VAPORIX_CONFIG.SUPABASE_URL,window.VAPORIX_CONFIG.SUPABASE_ANON_KEY);
-      const [cr,pr]=await Promise.all([
+      const [cr,pr,fr]=await Promise.all([
         db.from('categories').select('id,name,slug,image_url,is_active,sort_order').eq('is_active',true).order('sort_order').order('name'),
-        db.from('products').select('id,name,slug,category_id,price,stock,image_url,description,brand,active,tiers,flavors,categories(name)').eq('active',true).order('created_at',{ascending:false})
+        db.from('products').select('id,name,slug,category_id,price,stock,image_url,description,brand,active,tiers,flavors,categories(name)').eq('active',true).order('created_at',{ascending:false}),
+        db.from('product_flavors').select('product_id,name,stock').order('name')
       ]);
       if(pr.error)throw pr.error;
       const dbProducts=Array.isArray(pr.data)?pr.data:[];
+      const flavorStockMap=new Map();
+      if(!fr.error&&Array.isArray(fr.data)) fr.data.forEach(f=>{
+        const pid=Number(f.product_id);
+        if(!flavorStockMap.has(pid)) flavorStockMap.set(pid,{});
+        flavorStockMap.get(pid)[String(f.name)]=Math.max(0,Number(f.stock)||0);
+      });
       const oldProducts=products.map(p=>({...p}));
       const fallbackBySlug=new Map(oldProducts.map(p=>[String(p.slug||''),p]));
       const fallbackByName=new Map(oldProducts.map(p=>[String(p.name||''),p]));
       if(dbProducts.length){
         products.splice(0,products.length,...dbProducts.map(p=>{
           const fallback=fallbackBySlug.get(String(p.slug||''))||fallbackByName.get(String(p.name||''));
-          return {id:p.id,dbId:p.id,name:p.name||'',slug:p.slug||'',price:Number(p.price||0),stock:Number(p.stock||0)>80?'80+':String(Number(p.stock||0)),cat:p.categories?.name||'',category_id:p.category_id??null,brand:p.brand||p.categories?.name||'',img:p.image_url||fallback?.img||'',description:p.description||'',tiers:numericTiers(p.tiers,p.price),flavors:Array.isArray(p.flavors)?p.flavors.filter(Boolean).map(String):[]};
+          return {id:p.id,dbId:p.id,name:p.name||'',slug:p.slug||'',price:Number(p.price||0),stock:Number(p.stock||0)>80?'80+':String(Number(p.stock||0)),cat:p.categories?.name||'',category_id:p.category_id??null,brand:p.brand||p.categories?.name||'',img:p.image_url||fallback?.img||'',description:p.description||'',tiers:numericTiers(p.tiers,p.price),flavors:Array.isArray(p.flavors)?p.flavors.filter(Boolean).map(String):[],flavorStocks:flavorStockMap.get(Number(p.id))||{}};
         }));
       }
       const wrap=document.getElementById('categories');
@@ -176,6 +183,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   setTimeout(bindAgeGate,1000);
 
   // MULTI_FLAVOR_CHOOSER_V2
+  // FLAVOR_STOCK_SYNC_V1
   const initAddToCartChooser=()=>{
     if(document.getElementById('vpxChooser')) return;
     const style=document.createElement('style');
