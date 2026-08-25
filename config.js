@@ -53,7 +53,6 @@ document.addEventListener('DOMContentLoaded',()=>{
       .drawer{display:block!important;visibility:hidden;opacity:0;pointer-events:none;transition:opacity .28s ease,visibility 0s linear .28s}
       .drawer.show{visibility:visible;opacity:1;pointer-events:auto;transition:opacity .28s ease,visibility 0s linear 0s}
       .drawer-panel{transform:translateX(100%);transition:transform .34s cubic-bezier(.22,1,.36,1);will-change:transform;width:min(100%,430px);padding:18px 14px calc(24px + env(safe-area-inset-bottom))}
-      .drawer.show .drawer-panel{transform:translateX(0)}
       .cart-item{grid-template-columns:58px minmax(0,1fr) auto;gap:9px;padding:12px 0}
       .thumb{width:58px;height:68px}
       .info-modal{visibility:hidden;opacity:0;display:grid!important;pointer-events:none;transition:opacity .28s ease,visibility 0s linear .28s}
@@ -175,4 +174,125 @@ document.addEventListener('DOMContentLoaded',()=>{
   bindAgeGate();
   setTimeout(bindAgeGate,300);
   setTimeout(bindAgeGate,1000);
+
+  const initAddToCartChooser=()=>{
+    if(document.getElementById('vpxChooser')) return;
+    const style=document.createElement('style');
+    style.id='vpxChooserStyle';
+    style.textContent=`
+      #vpxChooser{position:fixed;inset:0;z-index:99999;display:none;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.68);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);padding:12px}
+      #vpxChooser.show{display:flex}
+      #vpxChooser .vpx-box{width:min(520px,100%);max-height:min(92vh,760px);overflow:auto;background:#15151a;border:1px solid #34343d;border-radius:24px;padding:18px;box-shadow:0 24px 80px rgba(0,0,0,.55)}
+      #vpxChooser .vpx-head{display:flex;gap:14px;align-items:center}
+      #vpxChooser .vpx-img{width:82px;height:96px;flex:0 0 82px;border-radius:14px;background:#101014;object-fit:contain}
+      #vpxChooser .vpx-title{font-size:20px;font-weight:900;color:#fff}
+      #vpxChooser .vpx-stock{margin-top:5px;color:#7dff00;font-weight:800}
+      #vpxChooser .vpx-label{font-size:13px;color:#9b9ca5;font-weight:800;margin:18px 0 9px}
+      #vpxChooser .vpx-flavors{display:flex;flex-wrap:wrap;gap:8px}
+      #vpxChooser .vpx-flavor{border:1px solid #3a3a45;background:#202026;color:#b9bac2;border-radius:999px;padding:9px 12px;font-size:13px;font-weight:750;cursor:pointer}
+      #vpxChooser .vpx-flavor.active{border-color:#c43cff;background:linear-gradient(90deg,#f21b9b,#813cff);color:#fff;box-shadow:0 0 18px rgba(194,42,255,.22)}
+      #vpxChooser .vpx-qty{display:flex;align-items:center;justify-content:space-between;background:#101014;border:1px solid #30303a;border-radius:15px;padding:8px 10px}
+      #vpxChooser .vpx-step{width:46px;height:42px;border:0;border-radius:12px;background:#24242b;color:#fff;font-size:25px;font-weight:700;cursor:pointer}
+      #vpxChooser .vpx-count{min-width:60px;text-align:center;font-size:20px;font-weight:900;color:#fff}
+      #vpxChooser .vpx-price{margin-top:12px;display:flex;justify-content:space-between;align-items:end}
+      #vpxChooser .vpx-unit{font-size:13px;color:#9b9ca5}.vpx-unit strong{display:block;font-size:24px;color:#fff}
+      #vpxChooser .vpx-total{text-align:right;font-size:13px;color:#9b9ca5}.vpx-total strong{display:block;font-size:24px;color:#fff}
+      #vpxChooser .vpx-add{width:100%;height:52px;border:0;border-radius:16px;margin-top:16px;background:linear-gradient(90deg,#f21b9b,#813cff);color:#fff;font-size:16px;font-weight:900;cursor:pointer}
+      #vpxChooser .vpx-close{width:100%;height:42px;border:0;background:transparent;color:#9b9ca5;font-weight:800;cursor:pointer;margin-top:3px}
+      @media(max-width:700px){#vpxChooser{padding:8px}.vpx-box{border-radius:24px 24px 18px 18px!important;padding:16px!important}.vpx-title{font-size:18px!important}}
+    `;
+    document.head.appendChild(style);
+    const root=document.createElement('div');
+    root.id='vpxChooser';
+    root.innerHTML=`<div class="vpx-box" role="dialog" aria-modal="true">
+      <div class="vpx-head">
+        <img class="vpx-img" alt="">
+        <div><div class="vpx-title"></div><div class="vpx-stock"></div></div>
+      </div>
+      <div class="vpx-label vpx-flavor-label" style="display:none">Выберите вкус</div>
+      <div class="vpx-flavors"></div>
+      <div class="vpx-label">Количество</div>
+      <div class="vpx-qty"><button class="vpx-step" data-step="-1" type="button">−</button><div class="vpx-count">1</div><button class="vpx-step" data-step="1" type="button">+</button></div>
+      <div class="vpx-price"><div class="vpx-unit">Цена за 1 шт.<strong class="vpx-unit-val">0.00 EUR</strong></div><div class="vpx-total">Итого<strong class="vpx-total-val">0.00 EUR</strong></div></div>
+      <button class="vpx-add" type="button">Добавить в корзину</button>
+      <button class="vpx-close" type="button">Отмена</button>
+    </div>`;
+    document.body.appendChild(root);
+
+    let current=null, qty=1, flavor='';
+    const els={
+      img:root.querySelector('.vpx-img'),title:root.querySelector('.vpx-title'),stock:root.querySelector('.vpx-stock'),
+      flavorLabel:root.querySelector('.vpx-flavor-label'),flavors:root.querySelector('.vpx-flavors'),count:root.querySelector('.vpx-count'),
+      unit:root.querySelector('.vpx-unit-val'),total:root.querySelector('.vpx-total-val')
+    };
+    const getMax=()=>{const n=Number(current?.stock);return Number.isFinite(n)&&n>0?n:9999};
+    const getTierPrice=q=>{
+      const base=Number(current?.price||0);
+      const tiers=Array.isArray(current?.tiers)?current.tiers:[];
+      if(tiers.length&&typeof tiers[0]==='object'){
+        const sorted=tiers.filter(x=>Number(x.qty)>0&&Number(x.price)>=0).sort((a,b)=>Number(a.qty)-Number(b.qty));
+        let p=base; sorted.forEach(x=>{if(q>=Number(x.qty))p=Number(x.price)}); return p;
+      }
+      if(tiers.length===5){const qs=[20,30,50,70,100];let p=base;qs.forEach((t,i)=>{if(q>=t)p=Number(tiers[i])});return p}
+      return base;
+    };
+    const render=()=>{
+      const p=getTierPrice(qty); els.count.textContent=qty; els.unit.textContent=p.toFixed(2)+' EUR'; els.total.textContent=(p*qty).toFixed(2)+' EUR';
+    };
+    const close=()=>{root.classList.remove('show');document.body.style.overflow='auto';current=null};
+    const findProduct=card=>{
+      const name=card?.querySelector('.name')?.textContent?.trim()||'';
+      return (Array.isArray(window.products)?window.products:[]).find(p=>String(p.name||'').trim()===name)
+        || (Array.isArray(products)?products:[]).find(p=>String(p.name||'').trim()===name);
+    };
+    const open=card=>{
+      const p=findProduct(card); if(!p)return;
+      current=p; qty=1; flavor='';
+      els.img.src=p.img||card?.querySelector('.pic img')?.src||''; els.title.textContent=p.name||'Товар';
+      els.stock.textContent='В наличии: '+(p.stock??'');
+      const fs=Array.isArray(p.flavors)?p.flavors.filter(Boolean):[];
+      els.flavors.innerHTML='';
+      els.flavorLabel.style.display=fs.length?'block':'none';
+      fs.forEach((f,i)=>{const b=document.createElement('button');b.type='button';b.className='vpx-flavor'+(i===0?' active':'');b.textContent=f;b.onclick=()=>{flavor=f;root.querySelectorAll('.vpx-flavor').forEach(x=>x.classList.remove('active'));b.classList.add('active')};els.flavors.appendChild(b);});
+      if(fs.length)flavor=fs[0];
+      render();root.classList.add('show');document.body.style.overflow='hidden';
+    };
+    root.addEventListener('click',e=>{if(e.target===root)e.preventDefault(),close()});
+    root.querySelector('.vpx-close').onclick=close;
+    root.querySelectorAll('.vpx-step').forEach(b=>b.onclick=()=>{qty=Math.max(1,Math.min(getMax(),qty+Number(b.dataset.step)));render()});
+    root.querySelector('.vpx-add').onclick=()=>{
+      if(!current)return;
+      const item={...current,quantity:qty,qty,flavor:flavor||null};
+      try{
+        if(typeof window.addToCart==='function'){window.addToCart(item)}
+        else if(typeof window.addCart==='function'){window.addCart(item)}
+        else{
+          const key='vaporix_cart';
+          const cart=JSON.parse(localStorage.getItem(key)||'[]');
+          const k=String(current.id||current.dbId||current.slug||current.name)+'|'+String(flavor||'');
+          const old=cart.find(x=>String(x.id||x.dbId||x.slug||x.name)+'|'+String(x.flavor||'')===k);
+          if(old)old.quantity=(Number(old.quantity||old.qty)||0)+qty; else cart.push(item);
+          localStorage.setItem(key,JSON.stringify(cart));
+        }
+      }catch(e){console.warn('VAPORIX cart:',e)}
+      close();
+      if(typeof window.renderCart==='function')window.renderCart();
+      const cartNav=document.querySelector('.bottom .nav:nth-child(3)');
+      if(cartNav&&typeof cartNav.click==='function')setTimeout(()=>cartNav.click(),80);
+    };
+
+    document.addEventListener('click',e=>{
+      const btn=e.target.closest?.('.add-cart');
+      if(!btn)return;
+      e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();
+      open(btn.closest('.card'));
+    },true);
+    document.addEventListener('touchend',e=>{
+      const btn=e.target.closest?.('.add-cart');
+      if(!btn)return;
+      e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();
+      open(btn.closest('.card'));
+    },{capture:true,passive:false});
+  };
+  initAddToCartChooser();
 });
