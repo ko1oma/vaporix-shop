@@ -121,18 +121,34 @@ document.addEventListener('DOMContentLoaded',()=>{
     if(result.error){result=await db.from('categories').select('*').order('name')}
     const data=result.data;
     if(!Array.isArray(data))return;
-    const normalize=v=>String(v||'').toLowerCase().replace(/\s+/g,' ').trim();
-    data.filter(c=>c.is_active!==false&&c.slug!=='all').forEach(c=>{
-      let b=[...wrap.querySelectorAll('.cat')].find(x=>x.dataset.cat===c.name||x.dataset.slug===c.slug||normalize(x.querySelector('b')?.textContent)===normalize(c.name));
-      if(!b){b=document.createElement('button');b.className='cat';wrap.appendChild(b)}
-      b.classList.add('dynamic-cat');b.dataset.cat=c.name;b.dataset.slug=c.slug;
-      let cir=b.querySelector('.circle');if(!cir){cir=document.createElement('div');cir.className='circle';b.prepend(cir)}
+
+    // Rebuild the category buttons from the database on every load.
+    // This prevents stale hardcoded labels (for example an old "Снюс")
+    // from surviving after the admin changes the category name.
+    const active=data.filter(c=>c.is_active!==false);
+    const allCat=active.find(c=>c.slug==='all');
+    const cats=active.filter(c=>c.slug!=='all');
+    const oldAll=[...wrap.querySelectorAll('.cat')].find(x=>x.dataset.slug==='all'||String(x.querySelector('b')?.textContent||'').trim()==='Все товары');
+    wrap.innerHTML='';
+
+    const makeCat=(c,isAll=false)=>{
+      const b=document.createElement('button');
+      b.className='cat dynamic-cat';
+      b.dataset.cat=c.name;
+      b.dataset.slug=c.slug;
+      const cir=document.createElement('div');
+      cir.className='circle';
       if(c.image_url)cir.innerHTML=`<img src="${String(c.image_url).replace(/"/g,'&quot;')}" alt="${String(c.name).replace(/"/g,'&quot;')}">`;
-      let lab=b.querySelector('b');if(!lab){lab=document.createElement('b');b.appendChild(lab)}lab.textContent=c.name;
-      b.onclick=()=>window.setCat?.(c.name);
-    });
-    const byOrder=new Map(data.map((c,i)=>[c.slug,i]));
-    [...wrap.querySelectorAll('.cat')].sort((a,b)=>(byOrder.get(a.dataset.slug)??999)-(byOrder.get(b.dataset.slug)??999)).forEach(x=>wrap.appendChild(x));
+      else if(!isAll&&oldAll?.querySelector('.circle'))cir.innerHTML=oldAll.querySelector('.circle').innerHTML;
+      const lab=document.createElement('b');
+      lab.textContent=c.name;
+      b.append(cir,lab);
+      b.onclick=()=>window.setCat?.(isAll?'all':c.name);
+      return b;
+    };
+
+    if(allCat)wrap.appendChild(makeCat(allCat,true));
+    cats.forEach(c=>wrap.appendChild(makeCat(c)));
   };
   loadDynamicCategories();
   setTimeout(loadDynamicCategories,500);
