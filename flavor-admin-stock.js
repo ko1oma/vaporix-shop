@@ -26,9 +26,9 @@
       render();
     };
     const addBtn=$id('addFlavorBtn');
-    if(addBtn)addBtn.onclick=()=>{const input=$id('pFlavorInput');const name=input.value.trim();if(!name)return;if(flavorDraft.some(x=>x.name.toLowerCase()===name.toLowerCase()))return;flavorDraft.push({name,stock:0});input.value='';render();input.focus()};
+    if(addBtn)addBtn.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();const input=$id('pFlavorInput');const name=input.value.trim();if(!name)return;if(flavorDraft.some(x=>x.name.toLowerCase()===name.toLowerCase()))return;flavorDraft.push({name,stock:0});input.value='';render();input.focus()},true);
     const input=$id('pFlavorInput');
-    if(input)input.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();addBtn?.click()}};
+    if(input)input.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();e.stopImmediatePropagation();addBtn?.click()}},true);
     const form=$id('productForm');
     form.addEventListener('submit',async function(e){
       e.preventDefault();e.stopImmediatePropagation();$id('productError').textContent='';
