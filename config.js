@@ -4,6 +4,11 @@ window.VAPORIX_CONFIG={
 };
 
 document.addEventListener('DOMContentLoaded',()=>{
+  // config.js is shared by the shop and the admin panel.
+  // The admin page must never run the public catalog synchronisation below,
+  // because its #categories element is the admin section, not the shop catalog.
+  if(document.getElementById('appView')) return;
+
   const s=document.createElement('style');
   s.textContent=`
     .logo .vapo-part,.brand .vapo-part{color:var(--text)!important}
@@ -24,12 +29,16 @@ document.addEventListener('DOMContentLoaded',()=>{
       .search-wrap{width:100%;max-width:none;margin:0}
       .search{width:100%;min-height:50px;border-radius:17px;padding:12px 44px 12px 15px;font-size:16px}
       .section-title{font-size:21px;margin:14px 0 11px}
-      .categories{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px 6px;padding:2px 0 12px;width:100%}
-      .cat{min-width:0;width:100%;padding:2px 0;border-radius:14px}
-      .cat .circle{width:72px;height:72px;margin-bottom:7px}
-      .cat .circle::after{width:52px;height:52px}
-      .cat .circle svg{width:46px;height:46px}
-      .cat b{font-size:12px;line-height:1.15;white-space:normal;overflow-wrap:anywhere}
+
+      /* Categories stay on ONE horizontal row on mobile. */
+      .categories{display:flex!important;flex-wrap:nowrap!important;align-items:flex-start;gap:8px;padding:2px 0 12px;width:100%;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none;touch-action:pan-x}
+      .categories::-webkit-scrollbar{display:none}
+      .cat{flex:0 0 70px;min-width:70px;width:70px;padding:2px 0;border-radius:14px}
+      .cat .circle{width:64px;height:64px;margin:0 auto 7px}
+      .cat .circle::after{width:48px;height:48px}
+      .cat .circle svg{width:42px;height:42px}
+      .cat b{display:block;font-size:11px;line-height:1.12;white-space:normal;overflow-wrap:anywhere;text-align:center}
+
       .grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
       .card{border-radius:14px;min-width:0}
       .pic{height:150px;padding:6px}
@@ -62,7 +71,8 @@ document.addEventListener('DOMContentLoaded',()=>{
     }
     @media (max-width:370px){
       .app{padding-left:9px;padding-right:9px}
-      .cat .circle{width:66px;height:66px}.cat .circle::after{width:48px;height:48px}.cat .circle svg{width:42px;height:42px}
+      .cat{flex-basis:66px;min-width:66px;width:66px}
+      .cat .circle{width:60px;height:60px}.cat .circle::after{width:46px;height:46px}.cat .circle svg{width:40px;height:40px}
       .bottom{left:6px;right:6px}.bottom .nav{padding-left:10px;padding-right:10px}.bottom .nav.active{padding-left:12px;padding-right:12px}
       .grid{gap:7px}.pic{height:138px}.card-body{padding-left:8px;padding-right:8px}.card-actions{grid-template-columns:82px minmax(0,1fr)}
     }
