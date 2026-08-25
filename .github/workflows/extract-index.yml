@@ -1,0 +1,20 @@
+name: Extract historical index
+on:
+  push:
+    branches: [main]
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Extract and split
+        run: |
+          git show 07af91dc8712394758874ff721dc7c006749718b:index.html > index-original.html
+          split -b 400k -d -a 2 index-original.html index-part-
+      - name: Upload parts
+        uses: actions/upload-artifact@v4
+        with:
+          name: historical-index
+          path: index-part-*
