@@ -303,4 +303,4 @@ document.addEventListener('DOMContentLoaded',()=>{
 
 
 // VAPORIX stability patch
-document.addEventListener('DOMContentLoaded',()=>{setTimeout(()=>{const s=document.createElement('script');s.src='vpx-stability-patch.js?v=1';document.body.appendChild(s)},100)}, {once:true});
+document.addEventListener('DOMContentLoaded',()=>{setTimeout(()=>{const s=document.createElement('script');s.src='vpx-stability-patch.js?v=5';document.body.appendChild(s)},100)}, {once:true});
