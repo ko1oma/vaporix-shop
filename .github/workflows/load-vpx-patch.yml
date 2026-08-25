@@ -6,7 +6,7 @@ permissions:
   contents: write
 jobs:
   patch:
-    if: !contains(github.event.head_commit.message, 'load vpx stability patch')
+    if: "!contains(github.event.head_commit.message, 'load vpx stability patch')"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
