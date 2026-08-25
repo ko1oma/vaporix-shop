@@ -14,8 +14,6 @@ document.addEventListener('DOMContentLoaded',()=>{
     #pTiersEditor .tierRow{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin:8px 0;align-items:center}
     #pTiersEditor input{width:100%}.tierRemove{width:38px;height:38px;border-radius:10px;background:transparent;border:1px solid var(--line,#30303a);color:var(--muted,#8f9098)}
     .dynamic-cat .circle{position:relative;overflow:hidden;padding:0!important}.dynamic-cat .circle:before{display:none}.dynamic-cat .circle img{display:block;width:100%;height:100%;object-fit:cover;border-radius:50%;background:var(--panel,#16161a);position:relative;z-index:1}
-
-    /* VAPORIX mobile-first navigation: icons by default, label opens only for the active item. */
     @media (max-width:700px){
       html,body{width:100%;max-width:100%;overflow-x:hidden}
       body{padding-bottom:calc(88px + env(safe-area-inset-bottom))}
@@ -62,7 +60,6 @@ document.addEventListener('DOMContentLoaded',()=>{
       .profile{padding-bottom:20px}
       .footer{margin:35px auto 10px;padding:0 8px}
     }
-
     @media (max-width:370px){
       .app{padding-left:9px;padding-right:9px}
       .cat .circle{width:66px;height:66px}.cat .circle::after{width:48px;height:48px}.cat .circle svg{width:42px;height:42px}
@@ -77,89 +74,80 @@ document.addEventListener('DOMContentLoaded',()=>{
   });
 
   const initTierEditor=()=>{
-    if(document.getElementById('productForm')){
-      const w=document.getElementById('pWholesale')?.closest('label');
-      if(w&&!document.getElementById('pTiersEditor')){
-        const box=document.createElement('div');box.id='pTiersEditor';
-        box.innerHTML='<div class="tierHead"><div>Оптовые цены по количеству<div class="tierHint">Количество → цена за 1 шт. Для каждого порога задаётся своя цена.</div></div><button type="button" class="secondary" id="addTierBtn">+ Добавить порог</button></div><div id="tierRows"></div>';
-        w.parentElement.insertBefore(box,w.nextElementSibling);
-        document.getElementById('addTierBtn').onclick=()=>window.addTierRow();
-      }
-      window.addTierRow=(t={qty:'',price:''})=>{const r=document.getElementById('tierRows');if(!r)return;const x=document.createElement('div');x.className='tierRow';x.innerHTML=`<input class="tierQty" type="number" min="1" step="1" placeholder="Количество, например 20" value="${t.qty??''}"><input class="tierPrice" type="number" min="0" step="0.01" placeholder="Цена за 1 шт., €" value="${t.price??''}"><button type="button" class="tierRemove">×</button>`;x.querySelector('.tierRemove').onclick=()=>x.remove();r.appendChild(x)};
-      window.renderTierRows=(tiers)=>{const r=document.getElementById('tierRows');if(!r)return;r.innerHTML='';(Array.isArray(tiers)?tiers:[]).forEach(window.addTierRow)};
+    if(!document.getElementById('productForm'))return;
+    const w=document.getElementById('pWholesale')?.closest('label');
+    if(w&&!document.getElementById('pTiersEditor')){
+      const box=document.createElement('div');box.id='pTiersEditor';
+      box.innerHTML='<div class="tierHead"><div>Оптовые цены по количеству<div class="tierHint">Количество → цена за 1 шт. Для каждого порога задаётся своя цена.</div></div><button type="button" class="secondary" id="addTierBtn">+ Добавить порог</button></div><div id="tierRows"></div>';
+      w.parentElement.insertBefore(box,w.nextElementSibling);
+      document.getElementById('addTierBtn').onclick=()=>window.addTierRow();
     }
+    window.addTierRow=(t={qty:'',price:''})=>{const r=document.getElementById('tierRows');if(!r)return;const x=document.createElement('div');x.className='tierRow';x.innerHTML=`<input class="tierQty" type="number" min="1" step="1" placeholder="Количество, например 20" value="${t.qty??''}"><input class="tierPrice" type="number" min="0" step="0.01" placeholder="Цена за 1 шт., €" value="${t.price??''}"><button type="button" class="tierRemove">×</button>`;x.querySelector('.tierRemove').onclick=()=>x.remove();r.appendChild(x)};
+    window.renderTierRows=(tiers)=>{const r=document.getElementById('tierRows');if(!r)return;r.innerHTML='';(Array.isArray(tiers)?tiers:[]).forEach(window.addTierRow)};
   };
   initTierEditor();
 
   const enhanceMobileNav=()=>{
-    const bar=document.querySelector('.bottom');
-    if(!bar)return;
-    const buttons=[...bar.querySelectorAll('.nav')];
-    const labels=buttons.map(b=>String(b.textContent||'').replace(/\s+/g,' ').trim());
-    const orderFor=(label)=>{const x=label.toLowerCase();if(x.includes('каталог'))return 1;if(x.includes('инфо')||x.includes('info'))return 2;if(x.includes('корзин')||x.includes('cart'))return 3;if(x.includes('профил')||x.includes('profile'))return 4;return 9};
-    buttons.forEach((b,i)=>{
-      const label=labels[i]||'';
+    const bar=document.querySelector('.bottom');if(!bar)return;
+    [...bar.querySelectorAll('.nav')].forEach(b=>{
       if(!b.querySelector('.nav-label')){
-        const textNodes=[...b.childNodes].filter(n=>n.nodeType===3&&n.textContent.trim());
-        if(textNodes.length){const span=document.createElement('span');span.className='nav-label';span.textContent=textNodes.map(n=>n.textContent).join(' ').replace(/\s+/g,' ').trim();textNodes.forEach(n=>n.remove());b.appendChild(span)}
+        const text=[...b.childNodes].filter(n=>n.nodeType===3&&n.textContent.trim());
+        if(text.length){const span=document.createElement('span');span.className='nav-label';span.textContent=text.map(n=>n.textContent).join(' ').replace(/\s+/g,' ').trim();text.forEach(n=>n.remove());b.appendChild(span)}
       }
-      b.style.order=String(orderFor(label));
-      b.setAttribute('aria-label',label);
-      b.setAttribute('title',label);
-      b.addEventListener('click',()=>{buttons.forEach(x=>x.classList.remove('active'));b.classList.add('active')},{passive:true});
     });
   };
-  enhanceMobileNav();
-  setTimeout(enhanceMobileNav,250);
+  enhanceMobileNav();setTimeout(enhanceMobileNav,250);
 
-  const loadDynamicCategories=async()=>{
-    const wrap=document.querySelector('.categories');
-    if(!wrap)return;
-    if(!window.supabase||!window.VAPORIX_CONFIG?.SUPABASE_URL)return;
-    const db=supabase.createClient(window.VAPORIX_CONFIG.SUPABASE_URL,window.VAPORIX_CONFIG.SUPABASE_ANON_KEY);
-    let result=await db.from('categories').select('*').order('sort_order').order('name');
-    if(result.error){result=await db.from('categories').select('*').order('name')}
-    const data=result.data;
-    if(!Array.isArray(data))return;
-
-    // Rebuild the category buttons from the database on every load.
-    // This prevents stale hardcoded labels (for example an old "Снюс")
-    // from surviving after the admin changes the category name.
-    const active=data.filter(c=>c.is_active!==false);
-    const allCat=active.find(c=>c.slug==='all');
-    const cats=active.filter(c=>c.slug!=='all');
-    const oldAll=[...wrap.querySelectorAll('.cat')].find(x=>x.dataset.slug==='all'||String(x.querySelector('b')?.textContent||'').trim()==='Все товары');
-    wrap.innerHTML='';
-
-    const makeCat=(c,isAll=false)=>{
-      const b=document.createElement('button');
-      b.className='cat dynamic-cat';
-      b.dataset.cat=c.name;
-      b.dataset.slug=c.slug;
-      const cir=document.createElement('div');
-      cir.className='circle';
-      if(c.image_url)cir.innerHTML=`<img src="${String(c.image_url).replace(/"/g,'&quot;')}" alt="${String(c.name).replace(/"/g,'&quot;')}">`;
-      else if(!isAll&&oldAll?.querySelector('.circle'))cir.innerHTML=oldAll.querySelector('.circle').innerHTML;
-      const lab=document.createElement('b');
-      lab.textContent=c.name;
-      b.append(cir,lab);
-      b.onclick=()=>window.setCat?.(isAll?'all':c.name);
-      return b;
-    };
-
-    if(allCat)wrap.appendChild(makeCat(allCat,true));
-    cats.forEach(c=>wrap.appendChild(makeCat(c)));
-  };
-  loadDynamicCategories();
-  setTimeout(loadDynamicCategories,500);
-  setTimeout(loadDynamicCategories,1500);
-
-  if(document.getElementById('grid')){
-    const db=supabase.createClient(window.VAPORIX_CONFIG.SUPABASE_URL,window.VAPORIX_CONFIG.SUPABASE_ANON_KEY);
-    let tiersByName={};
-    const loadTiers=async()=>{const {data}=await db.from('products').select('name,tiers').eq('active',true);if(Array.isArray(data))tiersByName=Object.fromEntries(data.map(p=>[String(p.name),Array.isArray(p.tiers)?p.tiers:[]]));paint()};
-    const paint=()=>document.querySelectorAll('#grid .card').forEach(card=>{const n=card.querySelector('.name'),g=card.querySelector('.tiers-grid');if(!n||!g)return;const t=tiersByName[String(n.textContent)]||[];if(!t.length)return;g.innerHTML=t.map(x=>`<span><b>${Number(x.qty)} шт</b><b>${Number(x.price).toFixed(2)}</b></span>`).join('')});
-    new MutationObserver(()=>requestAnimationFrame(paint)).observe(document.getElementById('grid'),{childList:true,subtree:true});
-    loadTiers();
+  function numericTiers(raw,base){
+    if(Array.isArray(raw)&&raw.length&&raw.every(x=>typeof x==='number'))return raw.map(Number);
+    const byQty=new Map();
+    if(Array.isArray(raw))raw.forEach(x=>{if(x&&Number.isFinite(Number(x.qty))&&Number.isFinite(Number(x.price)))byQty.set(Number(x.qty),Number(x.price))});
+    return [20,30,50,70,100].map(q=>byQty.has(q)?byQty.get(q):Number(base||0));
   }
+
+  async function syncCatalog(){
+    if(!window.supabase||!window.VAPORIX_CONFIG?.SUPABASE_URL||typeof products==='undefined')return;
+    try{
+      const db=supabase.createClient(window.VAPORIX_CONFIG.SUPABASE_URL,window.VAPORIX_CONFIG.SUPABASE_ANON_KEY);
+      const [cr,pr]=await Promise.all([
+        db.from('categories').select('id,name,slug,image_url,is_active,sort_order').eq('is_active',true).order('sort_order').order('name'),
+        db.from('products').select('id,name,slug,category_id,price,stock,image_url,description,brand,active,tiers,flavors,categories(name)').eq('active',true).order('created_at',{ascending:false})
+      ]);
+      if(pr.error)throw pr.error;
+      const dbProducts=Array.isArray(pr.data)?pr.data:[];
+      const oldProducts=products.map(p=>({...p}));
+      const fallbackBySlug=new Map(oldProducts.map(p=>[String(p.slug||''),p]));
+      const fallbackByName=new Map(oldProducts.map(p=>[String(p.name||''),p]));
+      if(dbProducts.length){
+        products.splice(0,products.length,...dbProducts.map(p=>{
+          const fallback=fallbackBySlug.get(String(p.slug||''))||fallbackByName.get(String(p.name||''));
+          return {id:p.id,dbId:p.id,name:p.name||'',slug:p.slug||'',price:Number(p.price||0),stock:Number(p.stock||0)>80?'80+':String(Number(p.stock||0)),cat:p.categories?.name||'',category_id:p.category_id??null,brand:p.brand||p.categories?.name||'',img:p.image_url||fallback?.img||'',description:p.description||'',tiers:numericTiers(p.tiers,p.price),flavors:Array.isArray(p.flavors)?p.flavors.filter(Boolean).map(String):[]};
+        }));
+      }
+
+      const wrap=document.getElementById('categories');
+      if(wrap&&Array.isArray(cr.data)){
+        const cats=cr.data.filter(c=>c.is_active!==false);
+        const all=cats.find(c=>c.slug==='all');
+        const normal=cats.filter(c=>c.slug!=='all');
+        const current=(typeof category!=='undefined'&&category)||'Все';
+        wrap.innerHTML='';
+        const make=(c,isAll)=>{
+          const b=document.createElement('button');b.type='button';b.className='cat dynamic-cat'+((isAll?current==='Все':current===c.name)?' active':'');b.dataset.cat=isAll?'Все':c.name;b.dataset.slug=c.slug||'';
+          const circle=document.createElement('div');circle.className='circle';
+          if(c.image_url){const img=document.createElement('img');img.src=c.image_url;img.alt=c.name||'';img.loading='lazy';circle.appendChild(img)}
+          const label=document.createElement('b');label.textContent=isAll?((typeof lang!=='undefined'&&lang==='en')?'All products':(typeof lang!=='undefined'&&lang==='uk')?'Всі товари':(typeof lang!=='undefined'&&lang==='es')?'Todos los productos':(typeof lang!=='undefined'&&lang==='de')?'Alle Produkte':'Все товары'):c.name;
+          b.append(circle,label);b.onclick=()=>window.setCat?.(isAll?'Все':c.name);return b;
+        };
+        if(all)wrap.appendChild(make(all,true));normal.forEach(c=>wrap.appendChild(make(c,false)));
+      }
+      if(typeof window.render==='function')window.render();
+      if(typeof window.renderCart==='function')window.renderCart();
+    }catch(e){console.warn('VAPORIX catalog sync:',e)}
+  }
+
+  syncCatalog();
+  setTimeout(syncCatalog,1000);
+  window.addEventListener('focus',syncCatalog);
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')syncCatalog()});
 });
