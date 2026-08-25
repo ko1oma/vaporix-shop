@@ -23,8 +23,8 @@
       originalOpen(id);
       flavorDraft=[];
       if(id){
-        const {data,error}=await sb.from('product_flavors').select('name,stock').eq('product_id',Number(id)).order('id');
-        if(error)console.warn('product_flavors:',error);
+        const {data,error}=await sb.rpc('admin_get_product_flavors',{p_product_id:Number(id)});
+        if(error)console.warn('admin_get_product_flavors:',error);
         flavorDraft=(data||[]).map(x=>({name:cleanFlavor(x.name),stock:Number(x.stock)||0}));
       }
       render();
@@ -53,14 +53,8 @@
         let res=id?await sb.from('products').update(payload).eq('id',Number(id)).select('id').single():await sb.from('products').insert(payload).select('id').single();
         if(res.error)throw res.error;
         const productId=Number(res.data.id);
-        const del=await sb.from('product_flavors').delete().eq('product_id',productId);if(del.error)throw del.error;
-        if(cleaned.length){
-          const ins=await sb.from('product_flavors').insert(cleaned.map(x=>({product_id:productId,name:x.name,stock:x.stock})));
-          if(ins.error)throw ins.error;
-        }else{
-          const restore=await sb.from('products').update({stock:manualStock,flavors:[]}).eq('id',productId);
-          if(restore.error)throw restore.error;
-        }
+        const flavorRes=await sb.rpc('admin_set_product_flavors',{p_product_id:productId,p_flavors:cleaned});
+        if(flavorRes.error)throw flavorRes.error;
         $id('productDialog').close();await loadAll();showSection('products');
       }catch(err){$id('productError').textContent=err?.message||String(err)}
     },true);
