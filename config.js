@@ -4,11 +4,7 @@ window.VAPORIX_CONFIG={
 };
 
 document.addEventListener('DOMContentLoaded',()=>{
-  // config.js is shared by the shop and the admin panel.
-  // The admin page must never run the public catalog synchronisation below,
-  // because its #categories element is the admin section, not the shop catalog.
   if(document.getElementById('appView')) return;
-
   const s=document.createElement('style');
   s.textContent=`
     .logo .vapo-part,.brand .vapo-part{color:var(--text)!important}
@@ -29,8 +25,6 @@ document.addEventListener('DOMContentLoaded',()=>{
       .search-wrap{width:100%;max-width:none;margin:0}
       .search{width:100%;min-height:50px;border-radius:17px;padding:12px 44px 12px 15px;font-size:16px}
       .section-title{font-size:21px;margin:14px 0 11px}
-
-      /* Categories stay on ONE horizontal row on mobile. */
       .categories{display:flex!important;flex-wrap:nowrap!important;align-items:flex-start;gap:8px;padding:2px 0 12px;width:100%;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none;touch-action:pan-x}
       .categories::-webkit-scrollbar{display:none}
       .cat{flex:0 0 70px;min-width:70px;width:70px;padding:2px 0;border-radius:14px}
@@ -38,7 +32,6 @@ document.addEventListener('DOMContentLoaded',()=>{
       .cat .circle::after{width:48px;height:48px}
       .cat .circle svg{width:42px;height:42px}
       .cat b{display:block;font-size:11px;line-height:1.12;white-space:normal;overflow-wrap:anywhere;text-align:center}
-
       .grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
       .card{border-radius:14px;min-width:0}
       .pic{height:150px;padding:6px}
@@ -134,7 +127,6 @@ document.addEventListener('DOMContentLoaded',()=>{
           return {id:p.id,dbId:p.id,name:p.name||'',slug:p.slug||'',price:Number(p.price||0),stock:Number(p.stock||0)>80?'80+':String(Number(p.stock||0)),cat:p.categories?.name||'',category_id:p.category_id??null,brand:p.brand||p.categories?.name||'',img:p.image_url||fallback?.img||'',description:p.description||'',tiers:numericTiers(p.tiers,p.price),flavors:Array.isArray(p.flavors)?p.flavors.filter(Boolean).map(String):[]};
         }));
       }
-
       const wrap=document.getElementById('categories');
       if(wrap&&Array.isArray(cr.data)){
         const cats=cr.data.filter(c=>c.is_active!==false);
@@ -160,4 +152,27 @@ document.addEventListener('DOMContentLoaded',()=>{
   setTimeout(syncCatalog,1000);
   window.addEventListener('focus',syncCatalog);
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')syncCatalog()});
+
+  // Independent age-gate fallback for Telegram/iOS WebViews.
+  const bindAgeGate=()=>{
+    const gate=document.getElementById('age');
+    const button=document.getElementById('ageEnter');
+    if(!gate||!button||button.dataset.ageBound==='1')return;
+    button.dataset.ageBound='1';
+    const accept=()=>{
+      try{localStorage.setItem('age18','1')}catch(e){}
+      gate.classList.remove('age-hide');
+      gate.style.pointerEvents='none';
+      gate.style.opacity='0';
+      setTimeout(()=>{gate.style.display='none';gate.style.pointerEvents='none'},220);
+      document.body.style.overflow='auto';
+    };
+    button.addEventListener('click',accept);
+    button.addEventListener('touchend',e=>{e.preventDefault();accept()},{passive:false});
+    button.addEventListener('pointerup',e=>{if(e.pointerType==='touch')accept()});
+    button.onclick=accept;
+  };
+  bindAgeGate();
+  setTimeout(bindAgeGate,300);
+  setTimeout(bindAgeGate,1000);
 });
