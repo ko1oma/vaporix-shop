@@ -10,17 +10,21 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
-      - name: Extract card source
+      - name: Extract exact card render source
         run: |
           python - <<'PY'
           from pathlib import Path
           s=Path('index.html').read_text(encoding='utf-8')
-          needles=['card-actions','add-cart','card-qty','showInfo','Добавить в корзину']
+          needles=['class="add-cart"','class="card-qty"','class="card-actions"','addToCart','showInfo(','function render(']
           out=[]
           for n in needles:
-              p=s.find(n)
-              if p>=0:
-                  out.append('\n===== '+n+' =====\n'+s[max(0,p-2500):p+5000])
+              poss=[]; start=0
+              while True:
+                  p=s.find(n,start)
+                  if p<0: break
+                  poss.append(p); start=p+1
+              out.append('\n===== '+n+' count='+str(len(poss))+' =====')
+              for p in poss[-5:]: out.append('\n--- POS '+str(p)+' ---\n'+s[max(0,p-2200):p+3500])
           Path('card-source-debug.txt').write_text('\n'.join(out),encoding='utf-8')
           PY
       - name: Commit debug source
@@ -28,5 +32,5 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add card-source-debug.txt
-          git commit -m 'Add card source diagnostic [skip ci]' || exit 0
+          git commit -m 'Refresh card source diagnostic [skip ci]' || exit 0
           git push
