@@ -2,18 +2,26 @@
 window.VAPORIX_CONFIG={
   SUPABASE_URL:'https://kjwfkqexwemztakagihl.supabase.co',
   SUPABASE_ANON_KEY:'sb_publishable_RLAGN9MDHIaVo708txjldQ_b87BYhIV',
-  BUILD:'2026.08.26.6'
+  BUILD:'2026.08.26.7'
 };
 (function(){
   'use strict';
   let tries=0;
+  function getProducts(){
+    try{
+      if(Array.isArray(window.products))return window.products;
+      if(typeof products!=='undefined' && Array.isArray(products))return products;
+      if(Array.isArray(window.VAPORIX_PRODUCTS))return window.VAPORIX_PRODUCTS;
+    }catch(e){}
+    return null;
+  }
   async function enrich(){
     try{
-      const list=Array.isArray(window.products)?window.products:null;
-      if(!list||!list.length){if(tries++<40)setTimeout(enrich,250);return;}
+      const list=getProducts();
+      if(!list||!list.length){if(tries++<80)setTimeout(enrich,250);return;}
       if(list.__puffHubFlavorEnriched)return;
       const db=window.supabase?.createClient?.(window.VAPORIX_CONFIG.SUPABASE_URL,window.VAPORIX_CONFIG.SUPABASE_ANON_KEY);
-      if(!db)return;
+      if(!db){if(tries++<80)setTimeout(enrich,250);return;}
       const {data,error}=await db.from('product_flavors').select('product_id,name,stock').order('id');
       if(error){console.warn('PUFF HUB flavor stock sync:',error.message);return;}
       const byId={};
@@ -25,6 +33,6 @@ window.VAPORIX_CONFIG={
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',enrich,{once:true});else enrich();
 })();
 (function(){
-  function loadFixes(){if(document.getElementById('vaporix-runtime-fixes-script'))return;const s=document.createElement('script');s.id='vaporix-runtime-fixes-script';s.src='runtime_fixes.js?v=2026.08.26.6';s.defer=true;(document.head||document.documentElement).appendChild(s)}
+  function loadFixes(){if(document.getElementById('vaporix-runtime-fixes-script'))return;const s=document.createElement('script');s.id='vaporix-runtime-fixes-script';s.src='runtime_fixes.js?v=2026.08.26.7';s.defer=true;(document.head||document.documentElement).appendChild(s)}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',loadFixes,{once:true});else loadFixes();
 })();
