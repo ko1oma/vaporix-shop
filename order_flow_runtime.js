@@ -108,6 +108,34 @@
 
   const oldShowProfile=window.showProfile;window.showProfile=function(){oldShowProfile();ensureProfileOrders();renderOrders()};
   const oldHideCheckout=window.hideCheckout;window.hideCheckout=function(){$('checkoutModal').classList.remove('show');syncSheetState()};
+  function openFlavorChooser(index){
+    const list=typeof products==='function'?products():products;
+    const p=list?.[index];
+    if(!p)return;
+    const flavors=Array.isArray(p.flavors)?p.flavors.map(String).filter(Boolean):Object.keys(p.flavorStocks||{});
+    const stockMap=p.flavorStocks||{};
+    const stockFor=f=>Object.prototype.hasOwnProperty.call(stockMap,f)?Number(stockMap[f]||0):1;
+    if(!flavors.length){
+      const item={id:p.id,product:p,qty:1,flavor:null};
+      const existing=cart.find(x=>String(x.id)===String(item.id)&&!x.flavor);
+      if(existing)existing.qty+=1;else cart.push(item);
+      if(typeof renderCart2==='function')renderCart2();else if(typeof renderCart==='function')renderCart();
+      if(typeof window.showCart==='function')window.showCart();
+      return;
+    }
+    let modal=document.getElementById('phFlavorChooser');
+    if(!modal){modal=document.createElement('div');modal.id='phFlavorChooser';modal.className='ph-flavor-chooser';document.body.appendChild(modal)}
+    modal.innerHTML=`<div class="ph-flavor-box" role="dialog" aria-modal="true"><div class="ph-flavor-head"><div><div class="ph-flavor-kicker">Добавить в корзину</div><h2>${esc(p.name)}</h2></div><button type="button" class="ph-flavor-close">✕</button></div><div class="ph-flavor-label">Выберите вкус</div><div class="ph-flavor-list">${flavors.map((f,n)=>{const st=stockFor(f);return `<button type="button" class="ph-flavor-option" data-flavor-index="${n}" ${st<=0?'disabled':''}><span>${esc(f)}</span><small>${st<=0?'Нет в наличии':'В наличии'}</small></button>`}).join('')}</div><button type="button" class="ph-flavor-add" disabled>Добавить в корзину</button></div>`;
+    modal.classList.add('show');document.body.style.overflow='hidden';
+    let selected=null;
+    const close=()=>{modal.classList.remove('show');document.body.style.overflow='auto'};
+    modal.querySelector('.ph-flavor-close').onclick=close;
+    modal.onclick=e=>{if(e.target===modal)close()};
+    const add=modal.querySelector('.ph-flavor-add');
+    modal.querySelectorAll('.ph-flavor-option').forEach(b=>b.onclick=()=>{modal.querySelectorAll('.ph-flavor-option').forEach(x=>x.classList.remove('active'));b.classList.add('active');selected=flavors[Number(b.dataset.flavorIndex)];add.disabled=false});
+    add.onclick=()=>{if(!selected)return;const item={id:p.id,product:p,qty:1,flavor:selected};const existing=cart.find(x=>String(x.id)===String(item.id)&&String(x.flavor||'')===String(item.flavor));if(existing)existing.qty+=1;else cart.push(item);if(typeof renderCart2==='function')renderCart2();else if(typeof renderCart==='function')renderCart();close();if(typeof window.showCart==='function')window.showCart()};
+  }
+
   // Single authoritative catalog Add-to-cart handler.
   // The old card inline handler is stopped here before it can navigate anywhere.
   const openCatalogProduct=(e)=>{
@@ -120,7 +148,7 @@
     let i=m?Number(m[1]):[...document.querySelectorAll('.grid .card')].indexOf(card);
     if(!Number.isInteger(i)||i<0)return;
     e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();
-    openProductDetail(i);
+    openFlavorChooser(i);
   };
   document.addEventListener('click',openCatalogProduct,true);
   document.addEventListener('touchend',openCatalogProduct,{capture:true,passive:false});

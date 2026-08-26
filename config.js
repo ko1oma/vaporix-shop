@@ -184,3 +184,21 @@ document.addEventListener('DOMContentLoaded',()=>{
 
 
 });
+
+
+/* PUFF HUB FINAL FIX */
+document.addEventListener('DOMContentLoaded',()=>{
+  document.title='PUFF HUB — каталог';
+  const style=document.createElement('style');style.id='puffhub-final-fix-css';style.textContent=`
+    .card-actions{grid-template-columns:1fr!important;width:100%!important}
+    .card-actions .card-qty{display:none!important}
+    .card-actions .add-cart{grid-column:1/-1!important;width:100%!important;min-width:0!important;height:42px!important;margin:0!important}
+    .ph-flavor-chooser{position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.62);backdrop-filter:blur(9px);display:grid;place-items:center;padding:18px;opacity:0;pointer-events:none;transition:opacity .18s ease}
+    .ph-flavor-chooser.show{opacity:1;pointer-events:auto}
+    .ph-flavor-box{width:min(430px,100%);background:var(--panel,#151518);color:var(--text,#fff);border:1px solid var(--line2,#33333b);border-radius:22px;padding:18px;box-shadow:0 25px 90px rgba(0,0,0,.55)}
+    .ph-flavor-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:16px}.ph-flavor-kicker{font-size:11px;color:var(--muted,#96969e);font-weight:800;margin-bottom:4px}.ph-flavor-head h2{margin:0;font-size:20px}
+    .ph-flavor-close{width:36px;height:36px;border-radius:11px;background:var(--panel2,#202025);border:1px solid var(--line,#303039);color:var(--text,#fff);font-size:16px}.ph-flavor-label{font-size:12px;color:var(--muted,#96969e);font-weight:800;margin-bottom:8px}.ph-flavor-list{display:grid;gap:8px;max-height:48vh;overflow:auto}
+    .ph-flavor-option{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;text-align:left;padding:13px 14px;border-radius:14px;background:var(--panel2,#202025);border:1px solid var(--line2,#38383f);color:var(--text,#fff);font-weight:850}.ph-flavor-option small{font-size:10px;color:var(--green,#55e06f);font-weight:800}.ph-flavor-option.active{border-color:transparent;background:linear-gradient(100deg,var(--pink,#ff299f),var(--purple,#7c42ff));color:#fff}.ph-flavor-option.active small{color:#fff}.ph-flavor-option:disabled{opacity:.38}.ph-flavor-add{width:100%;height:50px;margin-top:13px;border:0;border-radius:14px;background:linear-gradient(100deg,var(--pink,#ff299f),var(--purple,#7c42ff));color:#fff;font-weight:900;font-size:14px}.ph-flavor-add:disabled{opacity:.4}
+  `;document.head.appendChild(style);
+  document.querySelectorAll('.logo,.brand').forEach(el=>{el.textContent='PUFF HUB'});
+});
