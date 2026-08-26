@@ -38,13 +38,9 @@ window.VAPORIX_CONFIG={
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',enrich,{once:true});else enrich();
 })();
 (function(){
-  function loadScript(id,src){
-    if(document.getElementById(id))return;
-    const s=document.createElement('script');s.id=id;s.src=src;s.defer=true;(document.head||document.documentElement).appendChild(s);
+  function loadScript(){
+    if(document.getElementById('vaporix-runtime-fixes-script'))return;
+    const s=document.createElement('script');s.id='vaporix-runtime-fixes-script';s.src='runtime_fixes.js?v=2026.08.26.21';s.defer=true;(document.head||document.documentElement).appendChild(s);
   }
-  function boot(){
-    loadScript('vaporix-runtime-fixes-script','runtime_fixes.js?v=2026.08.26.21');
-    loadScript('vaporix-critical-ui-script','critical_ui_fix.js?v=2026.08.26.21');
-  }
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',loadScript,{once:true});else loadScript();
 })();
