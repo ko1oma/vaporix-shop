@@ -2,7 +2,7 @@
 window.VAPORIX_CONFIG={
   SUPABASE_URL:'https://kjwfkqexwemztakagihl.supabase.co',
   SUPABASE_ANON_KEY:'sb_publishable_RLAGN9MDHIaVo708txjldQ_b87BYhIV',
-  BUILD:'2026.08.26.10'
+  BUILD:'2026.08.26.11'
 };
 (function(){
   'use strict';
@@ -38,6 +38,6 @@ window.VAPORIX_CONFIG={
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',enrich,{once:true});else enrich();
 })();
 (function(){
-  function loadFixes(){if(document.getElementById('vaporix-runtime-fixes-script'))return;const s=document.createElement('script');s.id='vaporix-runtime-fixes-script';s.src='runtime_fixes.js?v=2026.08.26.10';s.defer=true;(document.head||document.documentElement).appendChild(s)}
+  function loadFixes(){if(document.getElementById('vaporix-runtime-fixes-script'))return;const s=document.createElement('script');s.id='vaporix-runtime-fixes-script';s.src='runtime_fixes.js?v=2026.08.26.11';s.defer=true;(document.head||document.documentElement).appendChild(s)}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',loadFixes,{once:true});else loadFixes();
 })();
