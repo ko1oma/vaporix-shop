@@ -2,7 +2,7 @@
 window.VAPORIX_CONFIG={
   SUPABASE_URL:'https://kjwfkqexwemztakagihl.supabase.co',
   SUPABASE_ANON_KEY:'sb_publishable_RLAGN9MDHIaVo708txjldQ_b87BYhIV',
-  BUILD:'2026.08.26.11'
+  BUILD:'2026.08.26.12'
 };
 (function(){
   'use strict';
@@ -40,4 +40,8 @@ window.VAPORIX_CONFIG={
 (function(){
   function loadFixes(){if(document.getElementById('vaporix-runtime-fixes-script'))return;const s=document.createElement('script');s.id='vaporix-runtime-fixes-script';s.src='runtime_fixes.js?v=2026.08.26.11';s.defer=true;(document.head||document.documentElement).appendChild(s)}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',loadFixes,{once:true});else loadFixes();
+})();
+(function(){
+  function loadCheckoutBackFix(){if(document.getElementById('vaporix-checkout-back-fix-script'))return;const s=document.createElement('script');s.id='vaporix-checkout-back-fix-script';s.src='checkout_back_fix.js?v=2026.08.26.12';s.defer=true;(document.head||document.documentElement).appendChild(s)}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',loadCheckoutBackFix,{once:true});else loadCheckoutBackFix();
 })();
