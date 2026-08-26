@@ -74,7 +74,7 @@
     const update=()=>{const u=currentUnitPrice(p,qty);$('phUnitPrice').textContent=money2(u)+' EUR';$('phTotal').textContent=money2(u*qty)+' EUR';$('phQty').textContent=qty;$('phPlus').disabled=qty>=maxStock();};
     document.querySelectorAll('[data-flavor]').forEach(b=>b.onclick=()=>{flavor=b.dataset.flavor;document.querySelectorAll('.ph-flavor').forEach(x=>x.classList.remove('active'));b.classList.add('active');qty=1;update()});
     $('phMinus').onclick=()=>{qty=Math.max(1,qty-1);update()};$('phPlus').onclick=()=>{qty=Math.min(maxStock(),qty+1);update()};
-    $('phDetailAdd').onclick=()=>{if(rows.length&&!flavor){alert('Выберите вкус.');return}const item={id:p.id,product:p,qty,flavor:flavor||null};const existing=cart.find(x=>String(x.id)===String(item.id)&&String(x.flavor||'')===String(item.flavor||''));if(existing)existing.qty+=qty;else cart.push(item);renderCart2();$('productDetailModal').classList.remove('show');};
+    $('phDetailAdd').onclick=()=>{if(rows.length&&!flavor){alert('Выберите вкус.');return}const item={id:p.id,product:p,qty,flavor:flavor||null};const existing=cart.find(x=>String(x.id)===String(item.id)&&String(x.flavor||'')===String(item.flavor||''));if(existing)existing.qty+=qty;else cart.push(item);renderCart2();$('productDetailModal').classList.remove('show');document.body.style.overflow='auto';if(typeof window.showCart==='function')window.showCart();};
     $('productDetailModal').classList.add('show');document.body.style.overflow='hidden';update();
   }
   function closeProductDetail(){$('productDetailModal')?.classList.remove('show');document.body.style.overflow='auto'}
@@ -108,6 +108,23 @@
 
   const oldShowProfile=window.showProfile;window.showProfile=function(){oldShowProfile();ensureProfileOrders();renderOrders()};
   const oldHideCheckout=window.hideCheckout;window.hideCheckout=function(){$('checkoutModal').classList.remove('show');syncSheetState()};
+  // Single authoritative catalog Add-to-cart handler.
+  // The old card inline handler is stopped here before it can navigate anywhere.
+  const openCatalogProduct=(e)=>{
+    const btn=e.target.closest?.('.grid .card .add-cart');
+    if(!btn)return;
+    const card=btn.closest('.card');
+    if(!card)return;
+    const src=btn.getAttribute('onclick')||'';
+    const m=src.match(/addWithQty\s*\(\s*(\d+)\s*\)/);
+    let i=m?Number(m[1]):[...document.querySelectorAll('.grid .card')].indexOf(card);
+    if(!Number.isInteger(i)||i<0)return;
+    e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();
+    openProductDetail(i);
+  };
+  document.addEventListener('click',openCatalogProduct,true);
+  document.addEventListener('touchend',openCatalogProduct,{capture:true,passive:false});
+
   loadCustomer();ensureModals();ensureProfileOrders();renderCart2();
   const staticCheckoutHead=document.querySelector('#checkoutModal .sheet-head');if(staticCheckoutHead)staticCheckoutHead.remove();
   const staticCheckoutButton=document.querySelector('#checkoutModal > .checkout-box > .checkout');if(staticCheckoutButton)staticCheckoutButton.remove();

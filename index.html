@@ -2066,6 +2066,11 @@ body.tg-no-vertical-swipe{
 }
 </style>
 </style>
+<style id="vaporix-card-final-cleanup">
+.card .card-actions{display:grid!important;grid-template-columns:minmax(0,1fr)!important;width:100%!important;gap:0!important;margin-top:auto!important;padding-top:12px!important;transform:none!important}
+.card .card-qty{display:none!important}
+.card .add-cart{display:flex!important;width:100%!important;min-width:0!important;box-sizing:border-box!important;align-items:center!important;justify-content:center!important}
+</style>
 </head>
 <body>
 <div class="age" id="age">
@@ -2293,14 +2298,12 @@ function render(){
    '<span><b>50 '+t('units')+'</b><b>'+money(tiers[2]??p.price)+'</b></span>'+
    '<span><b>70 '+t('units')+'</b><b>'+money(tiers[3]??p.price)+'</b></span>'+
    '<span><b>100 '+t('units')+'</b><b>'+money(tiers[4]??p.price)+'</b></span></div></div>'+
-   '<div class="card-actions"><div class="card-qty"><button onclick="cardQty('+i+',-1)" aria-label="minus">−</button><span id="cardQty'+i+'">1</span><button onclick="cardQty('+i+',1)" aria-label="plus">+</button></div><button class="add-cart" onclick="addWithQty('+i+')"><span class="add-cart-text">'+(lang==='ru'?'Добавить в':lang==='uk'?'Додати в':lang==='en'?'Add to':lang==='es'?'Añadir a':'In den')+'</span><svg class="add-cart-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 4.5h2l1.7 10.1a2 2 0 0 0 2 1.7h7.9a2 2 0 0 0 1.9-1.4L21 8H6.2"/><circle cx="9.2" cy="20" r="1.2"/><circle cx="17.2" cy="20" r="1.2"/></svg></button></div></div></article>';
+   '<div class="card-actions"><button class="add-cart" type="button" onclick="addWithQty('+i+')"><span class="add-cart-text">'+(lang==='ru'?'Добавить в':lang==='uk'?'Додати в':lang==='en'?'Add to':lang==='es'?'Añadir a':'In den')+'</span><svg class="add-cart-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 4.5h2l1.7 10.1a2 2 0 0 0 2 1.7h7.9a2 2 0 0 0 1.9-1.4L21 8H6.2"/><circle cx="9.2" cy="20" r="1.2"/><circle cx="17.2" cy="20" r="1.2"/></svg></button></div></div></article>';
  }).join('')||'<p style="color:var(--muted)">'+t('notFound')+'</p>';
 }
 function escapeHtml(v){return String(v).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
 function updateCartBadge(){const el=document.getElementById('cartBadge');if(el)el.textContent=String(cart.reduce((sum,item)=>sum+Number(item.qty||0),0))}
-const cardQuantities={};
-function cardQty(i,d){cardQuantities[i]=Math.max(1,(cardQuantities[i]||1)+d);const el=document.getElementById('cardQty'+i);if(el)el.textContent=cardQuantities[i]}
-function addWithQty(i){const qty=cardQuantities[i]||1;const p=products[i];const found=cart.find(x=>x.id===i);if(found)found.qty+=qty;else cart.push({id:i,product:p,qty});cardQuantities[i]=1;renderCart();showCart()}
+function addWithQty(i){if(window.__vpxCheckoutAdd)return window.__vpxCheckoutAdd(i);const p=products[i];if(p&&typeof window.openAddToCart==='function')window.openAddToCart(p);}
 function add(i){addWithQty(i)}
 function changeQty(i,d){if(!cart[i])return;cart[i].qty+=d;if(cart[i].qty<=0)cart.splice(i,1);renderCart()}
 function removeCart(i){cart.splice(i,1);renderCart()}
@@ -2565,5 +2568,5 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeSearch();hideC
 })();
 </script>
 
-<script src="vpx-checkout.js"></script>
+<script src="order_flow_runtime.js?v=clean1"></script>
 </body></html>
