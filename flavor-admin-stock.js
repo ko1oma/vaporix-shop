@@ -1,62 +1,35 @@
 (function(){
-  const wait=()=>document.getElementById('productForm')&&(typeof sb!=='undefined');
+  'use strict';
+  const wait=()=>document.getElementById('productForm')&&typeof sb!=='undefined';
   const start=()=>{
-    if(!wait()) return setTimeout(start,200);
-    const $id=id=>document.getElementById(id);
-    let flavorDraft=[];
-    const cleanFlavor=v=>String(v??'').replace(/\s*📦\s*(?:80\+|\d+)\s*$/,'').trim();
+    if(!wait())return setTimeout(start,200);
+    const $=id=>document.getElementById(id);let draft=[];
+    const clean=v=>String(v??'').replace(/\s*📦\s*(?:80\+|\d+)\s*$/,'').trim();
     const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
-    const render=()=>{
-      const list=$id('flavorAdminList'); if(!list)return;
-      list.innerHTML=flavorDraft.length ? flavorDraft.map((f,i)=>`<div class="flavor-admin-row"><input class="flavor-name" maxlength="80" value="${esc(f.name)}" data-i="${i}" placeholder="Вкус"><input class="flavor-stock" type="number" min="0" step="1" value="${Number.isFinite(Number(f.stock))?Number(f.stock):0}" data-i="${i}" placeholder="Количество"><button type="button" class="flavor-remove" data-i="${i}" aria-label="Удалить вкус">×</button></div>`).join('') : '<span class="flavor-admin-empty">Вкусов пока нет. Добавь первый вкус ниже.</span>';
-      const status=$id('flavorAdminStatus');
-      if(status){
-        const total=flavorDraft.reduce((sum,f)=>sum+Math.max(0,Math.floor(Number(f.stock)||0)),0);
-        status.textContent=flavorDraft.length?`Вкусов: ${flavorDraft.length}. Общий остаток автоматически: ${total} шт.`:'Вкусов нет. Тогда используется обычный общий остаток товара.';
-      }
-      list.querySelectorAll('.flavor-name').forEach(x=>x.oninput=e=>{flavorDraft[Number(e.target.dataset.i)].name=e.target.value});
-      list.querySelectorAll('.flavor-stock').forEach(x=>x.oninput=e=>{flavorDraft[Number(e.target.dataset.i)].stock=Math.max(0,Number(e.target.value)||0);const total=$id('flavorAdminStatus');if(total){const sum=flavorDraft.reduce((s,f)=>s+Math.max(0,Math.floor(Number(f.stock)||0)),0);total.textContent=`Вкусов: ${flavorDraft.length}. Общий остаток автоматически: ${sum} шт.`}});
-      list.querySelectorAll('.flavor-remove').forEach(x=>x.onclick=e=>{flavorDraft.splice(Number(e.currentTarget.dataset.i),1);render()});
-    };
-    const originalOpen=window.openProduct;
-    window.openProduct=async function(id=null){
-      originalOpen(id);
-      flavorDraft=[];
-      if(id){
-        const {data,error}=await sb.rpc('admin_get_product_flavors',{p_product_id:Number(id)});
-        if(error)console.warn('admin_get_product_flavors:',error);
-        flavorDraft=(data||[]).map(x=>({name:cleanFlavor(x.name),stock:Number(x.stock)||0}));
-      }
-      render();
-    };
-    const addBtn=$id('addFlavorBtn');
-    if(addBtn)addBtn.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();const input=$id('pFlavorInput');const name=input.value.trim();if(!name)return;if(flavorDraft.some(x=>x.name.toLowerCase()===name.toLowerCase()))return;flavorDraft.push({name,stock:0});input.value='';render();input.focus()},true);
-    const input=$id('pFlavorInput');
-    if(input)input.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();e.stopImmediatePropagation();addBtn?.click()}},true);
-    const form=$id('productForm');
-    form.addEventListener('submit',async function(e){
-      e.preventDefault();e.stopImmediatePropagation();$id('productError').textContent='';
+    const total=()=>draft.reduce((s,x)=>s+Math.max(0,Math.floor(Number(x.stock)||0)),0);
+    function status(){const el=$('flavorAdminStatus');if(el)el.textContent=draft.length?`Вкусов: ${draft.length}. Общий остаток: ${total()} шт.`:'Вкусов нет. Используется общий остаток товара.'}
+    function render(){
+      const list=$('flavorAdminList');if(!list)return;
+      list.innerHTML=draft.length?draft.map((f,i)=>`<div class="flavor-admin-row"><input class="flavor-name" maxlength="80" value="${esc(f.name)}" data-i="${i}" placeholder="Название вкуса"><input class="flavor-stock" type="number" min="0" step="1" value="${Math.max(0,Math.floor(Number(f.stock)||0))}" data-i="${i}" placeholder="Остаток"><button type="button" class="flavor-remove" data-i="${i}" aria-label="Удалить вкус">×</button></div>`).join(''):'<span class="flavor-admin-empty">Вкусов пока нет. Добавь первый вкус ниже.</span>';
+      status();list.querySelectorAll('.flavor-name').forEach(el=>el.addEventListener('input',e=>{draft[Number(e.target.dataset.i)].name=e.target.value;status()}));list.querySelectorAll('.flavor-stock').forEach(el=>el.addEventListener('input',e=>{draft[Number(e.target.dataset.i)].stock=Math.max(0,Math.floor(Number(e.target.value)||0));status()}));list.querySelectorAll('.flavor-remove').forEach(el=>el.addEventListener('click',e=>{draft.splice(Number(e.currentTarget.dataset.i),1);render()}));
+    }
+    async function load(id){draft=[];render();if(!id)return;const {data,error}=await sb.rpc('admin_get_product_flavors',{p_product_id:Number(id)});if(error){console.warn('admin_get_product_flavors:',error);return}draft=(data||[]).map(x=>({name:clean(x.name),stock:Math.max(0,Math.floor(Number(x.stock)||0))})).filter(x=>x.name);render()}
+    const originalOpen=window.openProduct;window.openProduct=async function(id=null){originalOpen(id);await load(id)};
+    const add=()=>{const input=$('pFlavorInput'),name=clean(input?.value);if(!name)return;if(draft.some(x=>x.name.toLowerCase()===name.toLowerCase())){alert('Такой вкус уже добавлен.');return}draft.push({name,stock:0});input.value='';render();input.focus()};
+    $('addFlavorBtn')?.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();add()},true);$('pFlavorInput')?.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();e.stopImmediatePropagation();add()}},true);
+    $('productForm')?.addEventListener('submit',async e=>{
+      e.preventDefault();e.stopImmediatePropagation();const err=$('productError');if(err)err.textContent='';const submit=e.submitter||$('productForm').querySelector('button[type="submit"]');if(submit){submit.disabled=true;submit.textContent='Сохраняю…'}
       try{
-        const id=$id('productId').value;
-        let imageUrl=$id('pImage').value.trim()||null;
-        const file=$id('pImageFile').files?.[0];
-        if(file)imageUrl=await uploadImage(file,'products');
-        const tiers=Array.from(document.querySelectorAll('#tierRows .tierRow')).map(row=>({qty:Number(row.querySelector('.tierQty').value),price:Number(row.querySelector('.tierPrice').value)})).filter(x=>Number.isFinite(x.qty)&&x.qty>0&&Number.isFinite(x.price)&&x.price>=0).sort((a,b)=>a.qty-b.qty);
-        const cleaned=[];const seen=new Set();
-        flavorDraft.forEach(f=>{
-          const name=cleanFlavor(f.name);if(!name)return;
-          const key=name.toLowerCase();if(seen.has(key))return;seen.add(key);
-          cleaned.push({name,stock:Math.max(0,Math.floor(Number(f.stock)||0))});
-        });
-        const manualStock=Math.max(0,Math.floor(Number($id('pStock').value)||0));
-        const payload={name:$id('pName').value.trim(),slug:$id('pSlug').value.trim(),category_id:$id('pCategory').value?Number($id('pCategory').value):null,price:Number($id('pPrice').value),wholesale_price:$id('pWholesale').value?Number($id('pWholesale').value):null,stock:cleaned.length?cleaned.reduce((sum,x)=>sum+x.stock,0):manualStock,image_url:imageUrl,description:$id('pDescription').value.trim()||null,active:$id('pActive').checked,tiers,flavors:cleaned.map(x=>x.name)};
-        let res=id?await sb.from('products').update(payload).eq('id',Number(id)).select('id').single():await sb.from('products').insert(payload).select('id').single();
-        if(res.error)throw res.error;
-        const productId=Number(res.data.id);
-        const flavorRes=await sb.rpc('admin_set_product_flavors',{p_product_id:productId,p_flavors:cleaned});
-        if(flavorRes.error)throw flavorRes.error;
-        $id('productDialog').close();await loadAll();showSection('products');
-      }catch(err){$id('productError').textContent=err?.message||String(err)}
+        const id=$('productId').value;let imageUrl=$('pImage').value.trim()||null;const file=$('pImageFile').files?.[0];if(file)imageUrl=await uploadImage(file,'products');
+        const names=[];const seen=new Set();const cleaned=[];draft.forEach(x=>{const name=clean(x.name),key=name.toLowerCase();if(!name||seen.has(key))return;seen.add(key);const stock=Math.max(0,Math.floor(Number(x.stock)||0));names.push(name);cleaned.push({name,stock})});
+        const manualStock=Math.max(0,Math.floor(Number($('pStock').value)||0));const tiers=Array.from(document.querySelectorAll('#tierRows .tierRow')).map(row=>({qty:Number(row.querySelector('.tierQty')?.value),price:Number(row.querySelector('.tierPrice')?.value)})).filter(x=>x.qty>0&&Number.isFinite(x.price)).sort((a,b)=>a.qty-b.qty);
+        const payload={name:$('pName').value.trim(),slug:$('pSlug').value.trim(),category_id:$('pCategory').value?Number($('pCategory').value):null,price:Number($('pPrice').value),wholesale_price:$('pWholesale').value?Number($('pWholesale').value):null,stock:cleaned.length?cleaned.reduce((s,x)=>s+x.stock,0):manualStock,image_url:imageUrl,description:$('pDescription').value.trim()||null,active:$('pActive').checked,tiers,flavors:names};
+        if(!payload.name||!payload.slug||!Number.isFinite(payload.price))throw new Error('Заполните название, slug и корректную цену.');
+        const res=id?await sb.from('products').update(payload).eq('id',Number(id)).select('id').single():await sb.from('products').insert(payload).select('id').single();if(res.error)throw res.error;
+        const productId=Number(id||res.data.id);const flavorRes=await sb.rpc('admin_set_product_flavors',{p_product_id:productId,p_flavors:cleaned});if(flavorRes.error)throw flavorRes.error;
+        $('productDialog').close();await loadAll();showSection('products');
+      }catch(error){if(err)err.textContent=error?.message||String(error)}finally{if(submit){submit.disabled=false;submit.textContent='Сохранить'}}
     },true);
+    window.__vaporixFlavorEditor={getDraft:()=>draft,render};
   };start();
 })();
