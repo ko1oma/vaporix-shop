@@ -10,18 +10,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Inject patch loader
+      - name: Force-load stability patch before config early return
         run: |
           python - <<'PY'
           from pathlib import Path
           p=Path('config.js')
           s=p.read_text(encoding='utf-8')
-          marker='vpx-stability-patch.js'
+          marker="vpx-stability-hard-loader-20260826"
           if marker not in s:
-              s += "\n\n// VAPORIX stability patch\ndocument.addEventListener('DOMContentLoaded',()=>{setTimeout(()=>{const s=document.createElement('script');s.src='vpx-stability-patch.js?v=1';document.body.appendChild(s)},100)}, {once:true});\n"
+              needle="document.addEventListener('DOMContentLoaded',()=>{\n  if(document.getElementById('appView')) return;"
+              loader="document.addEventListener('DOMContentLoaded',()=>{\n  /* vpx-stability-hard-loader-20260826 */\n  if(!window.__vpxStabilityHardLoader){\n    window.__vpxStabilityHardLoader=true;\n    const patch=document.createElement('script');\n    patch.src='vpx-stability-patch.js?v=20260826-hard1';\n    document.head.appendChild(patch);\n  }\n  if(document.getElementById('appView')) return;"
+              if needle not in s:
+                  raise SystemExit('config.js target not found')
+              s=s.replace(needle,loader,1)
               p.write_text(s,encoding='utf-8')
           PY
-      - name: Commit
+      - name: Commit patched config
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
