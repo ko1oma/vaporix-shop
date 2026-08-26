@@ -4,6 +4,13 @@ window.VAPORIX_CONFIG={
 };
 
 document.addEventListener('DOMContentLoaded',()=>{
+  /* vpx-stability-hard-loader-20260826 */
+  if(!window.__vpxStabilityHardLoader){
+    window.__vpxStabilityHardLoader=true;
+    const patch=document.createElement('script');
+    patch.src='vpx-stability-patch.js?v=20260826-hard1';
+    document.head.appendChild(patch);
+  }
   if(document.getElementById('appView')) return;
   const s=document.createElement('style');
   s.textContent=`
