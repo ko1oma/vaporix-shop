@@ -1,35 +1,20 @@
-VAPORIX — demo storefront
-Откройте index.html в браузере.
+VAPORIX / PUFF HUB — storefront
 
-Внутри уже есть:
-- адаптивная тёмная верстка в стиле референсов;
-- градиенты pink/purple;
-- hero-баннер;
-- категории и фильтрация;
-- поиск;
-- карточки товаров и оптовые уровни цен;
-- корзина;
-- выбор вкуса перед добавлением товара;
-- 4-шаговое оформление заказа: контакты → доставка → проверка → статус;
-- реальные публичные заказы через Supabase RPC `create_public_order`;
-- активные заказы в профиле с миниатюрами и деталями;
-- профиль/настройки;
-- age gate 18+.
+This repository contains the current GitHub Pages storefront and admin panel.
 
-Оплата в интерфейсе пока не подключает платёжный шлюз: заказ создаётся в Supabase и получает статус `created`. Серверная функция `create_public_order` проверяет товар, вкус, остаток, стоимость доставки и комиссию, после чего создаёт заказ и строки заказа. Перед запуском реального магазина отдельно подключите платёжный шлюз, юридические документы, проверку возраста и региональные ограничения.
+Current architecture
+- Four-step checkout: contacts → delivery → order review/payment → order status.
+- Product flavors are selectable before adding to cart, with quantity control and per-flavor stock.
+- Flavor stock is managed in the admin panel and stored in public.product_flavors.
+- Public checkout uses the Supabase create_public_order RPC. The database validates active products, selected flavors, stock, tier pricing, delivery and payment fee before creating the order.
+- Orders are persisted in Supabase and mirrored locally for the customer's profile.
+- Customer profile periodically synchronizes order status and payment status from Supabase.
+- Admin orders show customer contacts, total, order items, delivery address, order status and payment status.
+- Admin can change order and payment statuses directly from dropdowns.
 
+Important
+- config.js must contain the active Supabase project URL and publishable key.
+- Do not silently fall back to a fake local order if server order creation fails.
+- public.product_flavors is authoritative for products that have flavors; products.stock is synchronized by database functions.
 
-CLEANUP 2026-08-26
-- Removed obsolete stability/card patches and the workflow that re-injected them.
-- Removed obsolete part6 card handler that called openProductDetail (the Info transition bug).
-- Catalog cards no longer contain quantity controls; Add to cart uses the full action row.
-- The checkout hotfix part5 is the single authoritative product chooser.
-- Removed the duplicate multi-flavor chooser from config.js; active chooser is single-flavor.
-
-
-CLEAN ARCHITECTURE 2026-08-26
-- One catalog Add-to-cart handler: order_flow_runtime.js.
-- One product chooser: single flavor at a time, quantity inside the chooser.
-- Removed obsolete vpx stability/card patches, part-based checkout loader, and the workflow that re-injected patches.
-- Removed the old part6 handler that called openProductDetail and caused the Info/navigation conflict.
-- Product cards no longer render quantity controls; Add-to-cart spans the action row.
+Build: 2026.08.26.3
