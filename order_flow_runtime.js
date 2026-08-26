@@ -1,17 +1,22 @@
 (function(){
 'use strict';
-/* Checkout runtime loader — V18 stable order/profile flow. */
+/* Checkout runtime loader — V19 compact/static order UI + reliable info action. */
 var base=document.createElement('script');
-base.src='order_flow_runtime_original.js?v=20260827-18';
+base.src='order_flow_runtime_original.js?v=20260827-19';
 base.onload=function(){
   var actionFix=document.createElement('script');
-  actionFix.src='runtime_v13_checkout_action.js?v=20260827-18';
+  actionFix.src='runtime_v13_checkout_action.js?v=20260827-19';
   actionFix.onload=function(){
     var profileFix=document.createElement('script');
-    profileFix.src='runtime_profile_v16.js?v=20260827-18';
+    profileFix.src='runtime_profile_v16.js?v=20260827-19';
     profileFix.onload=function(){
       var stability=document.createElement('script');
-      stability.src='runtime_v18_stability.js?v=20260827-18';
+      stability.src='runtime_v18_stability.js?v=20260827-19';
+      stability.onload=function(){
+        var ui=document.createElement('script');
+        ui.src='runtime_v19_order_ui.js?v=20260827-19';
+        document.body.appendChild(ui);
+      };
       document.body.appendChild(stability);
     };
     document.body.appendChild(profileFix);
