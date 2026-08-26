@@ -4,7 +4,6 @@ window.VAPORIX_CONFIG={
   SUPABASE_ANON_KEY:'sb_publishable_RLAGN9MDHIaVo708txjldQ_b87BYhIV'
 };
 
-/* Load the exact previous config unchanged, then apply the storefront fixes below. */
 document.write('<scr'+'ipt src="https://raw.githubusercontent.com/ko1oma/vaporix-shop/fe04eb945fdbfc3f84e7cfbbda16efd146117e20/config.js"></scr'+'ipt>');
 
 (function(){
@@ -26,12 +25,11 @@ document.write('<scr'+'ipt src="https://raw.githubusercontent.com/ko1oma/vaporix
   function addDirect(index,flavor){
     var list=productList(),p=list&&list[index];if(!p)return;
     var item={id:p.id,product:p,qty:1};if(flavor)item.flavor=flavor;
-    if(Array.isArray(window.cart)){
-      var existing=window.cart.find(function(x){return String(x.id)===String(item.id)&&String(x.flavor||'')===String(item.flavor||'')});
-      if(existing)existing.qty+=1;else window.cart.push(item);
-    }
+    try{
+      var existing=cart.find(function(x){return String(x.id)===String(item.id)&&String(x.flavor||'')===String(item.flavor||'')});
+      if(existing)existing.qty+=1;else cart.push(item);
+    }catch(e){return}
     if(typeof window.renderCart==='function')window.renderCart();
-    if(typeof window.renderCart2==='function')window.renderCart2();
     if(typeof window.showCart==='function')window.showCart();
   }
 
@@ -57,7 +55,6 @@ document.write('<scr'+'ipt src="https://raw.githubusercontent.com/ko1oma/vaporix
     document.getElementById('phcClose').onclick=closeChooser;m.addEventListener('click',function(e){if(e.target===m)closeChooser()});
   }
 
-  /* index.html calls this exact function from every Add-to-cart button. */
   window.addWithQty=function(index){openChooser(Number(index))};
 
   document.addEventListener('DOMContentLoaded',function(){setBrand();setTimeout(setBrand,300);setTimeout(setBrand,1200)});
