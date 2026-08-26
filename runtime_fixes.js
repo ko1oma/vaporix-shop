@@ -1,158 +1,185 @@
 (function(){
 'use strict';
-/* VAPORIX interaction hotfix V11
-   Never allow a cancelled/hidden checkout flow to receive clicks from the catalog
-   or bottom navigation. A stale checkout validation handler must be inert unless
-   the checkout modal is actually visible.
+
+/* VAPORIX runtime stabilization V12
+   - A cancelled checkout is a dead session.
+   - Legacy checkout validation cannot fire from catalog/cart/profile navigation.
+   - "Вернуться к покупкам" is handled exactly once.
+   - Profile keeps a visible orders section.
+   - Existing product/flavor logic is left alone.
 */
-if(window.__VAPORIX_INTERACTION_V11)return;
-window.__VAPORIX_INTERACTION_V11=true;
+if(window.__VAPORIX_RUNTIME_V12)return;
+window.__VAPORIX_RUNTIME_V12=true;
 
+let checkoutActive=false;
+let closingCheckout=false;
 const norm=s=>String(s||'').replace(/\s+/g,' ').trim().toLowerCase();
-const isAdd=el=>{
-  const t=norm(el?.textContent);
-  return t.includes('добавить в корзину')||t.includes('add to cart')||t.includes('додати в кошик')||t.includes('añadir al carrito')||t.includes('in den warenkorb');
-};
-const MOVE_THRESHOLD=10;
-let gesture=null;
-let suppressAddClickButton=null;
+const checkoutModal=()=>document.getElementById('checkoutModal');
 
-function productIndexFromButton(button){
-  if(!button)return -1;
-  const src=button.getAttribute('onclick')||'';
-  const m=src.match(/addWithQty\s*\(\s*(\d+)\s*\)/i);
-  if(m)return Number(m[1]);
-  const card=button.closest('.grid .card');
-  if(card){
-    const cards=[...document.querySelectorAll('.grid .card')];
-    return cards.indexOf(card);
+function forceCheckoutClosed(){
+  checkoutActive=false;
+  closingCheckout=false;
+  const m=checkoutModal();
+  if(m){
+    m.classList.remove('show');
+    m.setAttribute('aria-hidden','true');
+    m.style.pointerEvents='none';
   }
-  return -1;
+  document.body.classList.remove('modal-open');
+  document.body.style.overflow='auto';
+  try{if(typeof window.syncSheetState==='function')window.syncSheetState()}catch(e){}
 }
 
-function activateAdd(button){
-  const idx=productIndexFromButton(button);
-  if(idx<0)return false;
-  if(typeof window.addWithQty==='function'){
-    window.addWithQty(idx);
-    return true;
-  }
-  return false;
-}
-
-document.addEventListener('pointerdown',e=>{
-  const target=e.target?.closest?.('button,a,[role="button"]');
-  gesture={x:e.clientX,y:e.clientY,pointerId:e.pointerId,addButton:isAdd(target)?target:null,moved:false};
-},{capture:true,passive:true});
-
-document.addEventListener('pointermove',e=>{
-  if(!gesture||gesture.pointerId!==e.pointerId)return;
-  if(Math.hypot(e.clientX-gesture.x,e.clientY-gesture.y)>MOVE_THRESHOLD){
-    gesture.moved=true;
-    if(gesture.addButton)suppressAddClickButton=gesture.addButton;
-  }
-},{capture:true,passive:true});
-
-document.addEventListener('pointercancel',e=>{
-  if(!gesture||gesture.pointerId!==e.pointerId)return;
-  if(gesture.moved&&gesture.addButton)suppressAddClickButton=gesture.addButton;
-  gesture=null;
-},{capture:true,passive:true});
-
-document.addEventListener('pointerup',e=>{
-  if(!gesture||gesture.pointerId!==e.pointerId)return;
-  const g=gesture;gesture=null;
-  if(!g.addButton)return;
-  const isTap=!g.moved&&Math.hypot(e.clientX-g.x,e.clientY-g.y)<=MOVE_THRESHOLD;
-  if(!isTap){suppressAddClickButton=g.addButton;return;}
-  if(activateAdd(g.addButton)){
-    suppressAddClickButton=g.addButton;
-    e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();
-  }
-},{capture:true,passive:false});
-
-document.addEventListener('click',e=>{
-  if(!suppressAddClickButton)return;
-  const target=e.target?.closest?.('button,a,[role="button"]');
-  if(target!==suppressAddClickButton)return;
-  suppressAddClickButton=null;
-  e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();
-},{capture:true,passive:false});
-
-/* Critical checkout-session guard.
-   After "Вернуться к покупкам", old inline handlers must never validate the
-   hidden checkout form. Only allow checkout navigation while the modal is shown. */
 function checkoutIsOpen(){
-  const m=document.getElementById('checkoutModal');
-  return !!(m && (m.classList.contains('show') || getComputedStyle(m).display!=='none'));
+  const m=checkoutModal();
+  return !!(checkoutActive&&m&&m.classList.contains('show')&&m.getAttribute('aria-hidden')!=='true');
 }
-function guardCheckoutFunctions(){
-  if(typeof window.nextCheckoutStep==='function'&&!window.nextCheckoutStep.__v11guard){
+
+function installCheckoutGuards(){
+  if(typeof window.nextCheckoutStep==='function'&&!window.nextCheckoutStep.__v12guard){
     const original=window.nextCheckoutStep;
     const wrapped=function(){
       if(!checkoutIsOpen())return false;
       return original.apply(this,arguments);
     };
-    wrapped.__v11guard=true;
+    wrapped.__v12guard=true;
     window.nextCheckoutStep=wrapped;
   }
-  if(typeof window.submitCheckoutOrder==='function'&&!window.submitCheckoutOrder.__v11guard){
+  if(typeof window.submitCheckoutOrder==='function'&&!window.submitCheckoutOrder.__v12guard){
     const original=window.submitCheckoutOrder;
     const wrapped=function(){
       if(!checkoutIsOpen())return false;
       return original.apply(this,arguments);
     };
-    wrapped.__v11guard=true;
+    wrapped.__v12guard=true;
     window.submitCheckoutOrder=wrapped;
   }
 }
-guardCheckoutFunctions();
-window.addEventListener('load',guardCheckoutFunctions,{once:false});
 
-/* Suppress only the stale validation alert outside checkout. Real validation
-   messages remain untouched while the checkout modal is open. */
-const nativeAlert=window.alert;
-window.alert=function(message){
-  const text=String(message??'');
-  if(!checkoutIsOpen() && /заполните все обязательные поля/i.test(text))return;
-  return nativeAlert.call(window,message);
-};
+function patchCheckoutAPI(){
+  if(typeof window.showCheckout==='function'&&!window.showCheckout.__v12wrapped){
+    const originalShow=window.showCheckout;
+    const wrappedShow=function(){
+      checkoutActive=true;
+      const m=checkoutModal();
+      if(m){m.removeAttribute('aria-hidden');m.style.pointerEvents='';}
+      const result=originalShow.apply(this,arguments);
+      checkoutActive=true;
+      installCheckoutGuards();
+      return result;
+    };
+    wrappedShow.__v12wrapped=true;
+    window.showCheckout=wrappedShow;
+    if(typeof window.showCartCheckout==='function')window.showCartCheckout=wrappedShow;
+  }
 
-/* If any legacy code calls cancelCheckout/hideCheckout, explicitly terminate
-   the checkout session before returning to the storefront. */
-function hardCloseCheckout(){
-  const m=document.getElementById('checkoutModal');
-  if(m){m.classList.remove('show');m.setAttribute('aria-hidden','true');}
-  document.body.style.overflow='auto';
-  document.body.classList.remove('modal-open');
+  if(typeof window.cancelCheckout==='function'&&!window.cancelCheckout.__v12wrapped){
+    const originalCancel=window.cancelCheckout;
+    const wrappedCancel=function(){
+      if(closingCheckout)return false;
+      closingCheckout=true;
+      checkoutActive=false;
+      try{originalCancel.apply(this,arguments)}catch(e){console.error(e)}
+      forceCheckoutClosed();
+      try{if(typeof window.showCart==='function')window.showCart()}catch(e){}
+      forceCheckoutClosed();
+      return false;
+    };
+    wrappedCancel.__v12wrapped=true;
+    window.cancelCheckout=wrappedCancel;
+  }
+
+  if(typeof window.hideCheckout==='function'&&!window.hideCheckout.__v12wrapped){
+    const originalHide=window.hideCheckout;
+    const wrappedHide=function(){
+      checkoutActive=false;
+      try{originalHide.apply(this,arguments)}catch(e){}
+      forceCheckoutClosed();
+      return false;
+    };
+    wrappedHide.__v12wrapped=true;
+    window.hideCheckout=wrappedHide;
+  }
+  installCheckoutGuards();
 }
-const previousCancel=window.cancelCheckout;
-window.cancelCheckout=function(){
-  hardCloseCheckout();
-  try{if(typeof window.hideCheckout==='function')window.hideCheckout()}catch(e){}
-  hardCloseCheckout();
-  try{if(typeof window.showCart==='function')window.showCart()}catch(e){}
-  guardCheckoutFunctions();
-};
+
+/* Only suppress the exact stale checkout validation message outside checkout. */
+if(!window.__VAPORIX_ALERT_V12){
+  window.__VAPORIX_ALERT_V12=true;
+  const nativeAlert=window.alert;
+  window.alert=function(message){
+    const text=String(message??'');
+    if(!checkoutIsOpen()&&/заполните все обязательные поля/i.test(text))return;
+    return nativeAlert.call(window,message);
+  };
+}
+
+/* One tap on the first checkout back button = one checkout close. */
+document.addEventListener('click',function(e){
+  const b=e.target?.closest?.('#checkoutModal .ph-cancel-checkout, #checkoutModal .ph-back');
+  if(!b)return;
+  const text=norm(b.textContent);
+  if(!b.classList.contains('ph-cancel-checkout')&&!text.includes('вернуться к покупкам'))return;
+  if(closingCheckout)return;
+  e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();
+  if(typeof window.cancelCheckout==='function')window.cancelCheckout();
+},{capture:true,passive:false});
+
+const stateObserver=new MutationObserver(()=>{
+  const m=checkoutModal();
+  if(!m)return;
+  if(!m.classList.contains('show')&&checkoutActive){
+    checkoutActive=false;
+    m.setAttribute('aria-hidden','true');
+    m.style.pointerEvents='none';
+    document.body.style.overflow='auto';
+  }
+});
+function observeCheckout(){
+  const m=checkoutModal();
+  if(m&&!m.__v12observed){
+    m.__v12observed=true;
+    stateObserver.observe(m,{attributes:true,attributeFilter:['class','style','aria-hidden']});
+  }
+  patchCheckoutAPI();
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',observeCheckout,{once:true});
+else observeCheckout();
+window.addEventListener('load',observeCheckout);
+setTimeout(observeCheckout,500);
+setTimeout(observeCheckout,1500);
+
+/* Orders block in profile: keep the section visible and bordered. */
+function ensureProfileOrders(){
+  const p=document.getElementById('profile');
+  if(!p)return;
+  let s=document.getElementById('phOrdersSection');
+  if(!s){
+    s=document.createElement('section');
+    s.id='phOrdersSection';
+    s.className='ph-orders-section';
+    s.innerHTML='<div class="ph-orders-title">Заказы</div><div id="phOrdersList"></div>';
+    const anchor=p.querySelector('.profile-section-title');
+    p.insertBefore(s,anchor||p.firstChild);
+  }
+  try{if(typeof window.PUFFHUB_REFRESH_ORDERS==='function')window.PUFFHUB_REFRESH_ORDERS()}catch(e){}
+}
+function observeProfile(){ensureProfileOrders()}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',observeProfile,{once:true});
+else observeProfile();
+window.addEventListener('load',observeProfile);
+setInterval(observeProfile,1500);
 
 const style=document.createElement('style');
-style.id='vaporix-interaction-v11';
+style.id='vaporix-runtime-v12-style';
 style.textContent=`
-  .checkout-modal .checkout-box{
-    overflow-y:auto!important;
-    overflow-x:hidden!important;
-    -webkit-overflow-scrolling:touch!important;
-    touch-action:pan-y!important;
-    overscroll-behavior:contain!important;
-    padding-bottom:34px!important;
-  }
-  .checkout-modal .ph-back{display:block!important;width:100%!important;margin:10px 0 0!important;}
-  .checkout-modal .ph-back + .ph-next{display:block!important;width:100%!important;margin:14px 0 0!important;}
-  .checkout-modal .ph-cancel-checkout + .ph-next{margin-top:14px!important;}
-  .ph-orders-section{display:block!important;width:100%!important;margin:0 0 22px!important;padding:0!important;}
-  .ph-orders-title{display:block!important;margin:0 0 12px!important;font-weight:850!important;}
-  #phOrdersList{display:block!important;width:100%!important;}
-  .ph-order-card{display:block!important;position:relative!important;pointer-events:auto!important;}
+#checkoutModal:not(.show){pointer-events:none!important}
+.checkout-modal .ph-back,.checkout-modal .ph-cancel-checkout{position:relative!important;z-index:50!important;pointer-events:auto!important;touch-action:manipulation!important}
+.ph-orders-section{display:block!important;width:calc(100% - 4px)!important;margin:0 2px 22px!important;padding:16px!important;border:1px solid #4a4a52!important;border-radius:20px!important;background:var(--panel,#171719)!important;box-sizing:border-box!important}
+.ph-orders-title{display:block!important;margin:0 0 12px!important;font-size:20px!important;font-weight:900!important}
+#phOrdersList{display:block!important;width:100%!important}
+.ph-order-card{display:block!important;width:100%!important;box-sizing:border-box!important;pointer-events:auto!important}
 `;
 document.head.appendChild(style);
+
 })();
