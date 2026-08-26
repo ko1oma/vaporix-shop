@@ -2,7 +2,7 @@
 window.VAPORIX_CONFIG={
   SUPABASE_URL:'https://kjwfkqexwemztakagihl.supabase.co',
   SUPABASE_ANON_KEY:'sb_publishable_RLAGN9MDHIaVo708txjldQ_b87BYhIV',
-  BUILD:'2026.08.26.8'
+  BUILD:'2026.08.26.9'
 };
 (function(){
   'use strict';
@@ -12,12 +12,10 @@ window.VAPORIX_CONFIG={
       if(Array.isArray(window.products))return window.products;
       if(typeof products!=='undefined'){
         if(Array.isArray(products))return products;
-        if(typeof products==='function'){
-          const v=products();if(Array.isArray(v))return v;
-        }
+        if(typeof products==='function'){const v=products();if(Array.isArray(v))return v;}
       }
       if(Array.isArray(window.VAPORIX_PRODUCTS))return window.VAPORIX_PRODUCTS;
-      if(typeof window.getProducts==='function'){const v=window.getProducts();if(Array.isArray(v))return v}
+      if(typeof window.getProducts==='function'){const v=window.getProducts();if(Array.isArray(v))return v;}
     }catch(e){}
     return null;
   }
@@ -25,6 +23,9 @@ window.VAPORIX_CONFIG={
     try{
       const list=getProducts();
       if(!list||!list.length){if(tries++<100)setTimeout(enrich,250);return;}
+      /* Bridge the legacy lexical catalog to window.products so every runtime
+         layer can resolve data-id buttons consistently. */
+      if(!Array.isArray(window.products))window.products=list;
       if(list.__puffHubFlavorEnriched)return;
       const db=window.supabase?.createClient?.(window.VAPORIX_CONFIG.SUPABASE_URL,window.VAPORIX_CONFIG.SUPABASE_ANON_KEY);
       if(!db){if(tries++<100)setTimeout(enrich,250);return;}
@@ -39,6 +40,6 @@ window.VAPORIX_CONFIG={
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',enrich,{once:true});else enrich();
 })();
 (function(){
-  function loadFixes(){if(document.getElementById('vaporix-runtime-fixes-script'))return;const s=document.createElement('script');s.id='vaporix-runtime-fixes-script';s.src='runtime_fixes.js?v=2026.08.26.8';s.defer=true;(document.head||document.documentElement).appendChild(s)}
+  function loadFixes(){if(document.getElementById('vaporix-runtime-fixes-script'))return;const s=document.createElement('script');s.id='vaporix-runtime-fixes-script';s.src='runtime_fixes.js?v=2026.08.26.9';s.defer=true;(document.head||document.documentElement).appendChild(s)}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',loadFixes,{once:true});else loadFixes();
 })();
