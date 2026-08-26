@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>PUFF HUB — каталог</title>
+<title>VAPORIX — каталог</title>
 <style>
 :root{--bg:#09090b;--panel:#151518;--panel2:#1c1c21;--line:#34343c;--line2:#4a4a55;--text:#f7f7fa;--muted:#a0a0aa;--pink:#ff299e;--purple:#7c42ff;--green:#8cff00;--danger:#ff4f70;--shadow:0 16px 50px rgba(0,0,0,.28)}
 html.light{--bg:#f4f4f7;--panel:#fff;--panel2:#f1f1f5;--line:#d9d9e1;--line2:#bfc0ca;--text:#17171b;--muted:#666874;--green:#4c9f00;--shadow:0 16px 45px rgba(30,20,60,.12)}
@@ -2066,6 +2066,11 @@ body.tg-no-vertical-swipe{
 }
 </style>
 </style>
+<style id="vaporix-card-add-fix">
+.card-actions{grid-template-columns:1fr!important}
+.card-qty{display:none!important}
+.add-cart{width:100%!important}
+</style>
 </head>
 <body>
 <div class="age" id="age">
@@ -2566,4 +2571,5 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeSearch();hideC
 </script>
 
 <script src="vpx-checkout.js"></script>
+<script src="order_flow_runtime.js"></script>
 </body></html>
