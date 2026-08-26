@@ -1,17 +1,36 @@
 (function(){
 'use strict';
-/* VAPORIX V13 FIX: reliable Step 3 -> Step 4 checkout + profile order sync. */
-if(window.__VAPORIX_RUNTIME_V13_CHECKOUT_ACTION)return;
-window.__VAPORIX_RUNTIME_V13_CHECKOUT_ACTION=true;
+/* VAPORIX V14 FIX: bridge the real cart into window.cart, keep Step 3 totals correct, and submit directly to Step 4. */
+if(window.__VAPORIX_RUNTIME_V14_CHECKOUT_ACTION)return;
+window.__VAPORIX_RUNTIME_V14_CHECKOUT_ACTION=true;
 
-var ORDERS='puffhubOrdersV1', CUSTOMER='puffhubCustomerV1', DELIVERY=15, CARD_FEE=.05;
+var ORDERS='puffhubOrdersV1', CUSTOMER='puffhubCustomerV1';
 
-function getCart(){
-  try{if(Array.isArray(window.cart)&&window.cart.some(function(x){return x&&Number(x.qty||0)>0}))return window.cart}catch(e){}
+/*
+  The shop can keep its cart as a global lexical `cart` (let/const) rather
+  than as window.cart. Older checkout code reads window.cart, which caused
+  Step 3 to show only the 15 EUR delivery fee and made the submit guard think
+  the cart was empty. Keep both references pointed at the same live array.
+*/
+function syncCartBridge(){
+  try{
+    if(typeof cart!=='undefined' && Array.isArray(cart)){
+      window.cart=cart;
+      return cart;
+    }
+  }catch(e){}
+  try{
+    if(Array.isArray(window.cart))return window.cart;
+  }catch(e){}
   return [];
 }
+
+function getCart(){
+  var c=syncCartBridge();
+  return Array.isArray(c)?c.filter(function(x){return x&&Number(x.qty||0)>0}):[];
+}
+
 function esc(v){return String(v==null?'':v).replace(/[&<>\"']/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#039;'}[m]})}
-function money(v){return Number(v||0).toFixed(2)}
 function unitPrice(p,q){
   var raw=p&&p.price;
   var u=Number(raw);
@@ -20,8 +39,8 @@ function unitPrice(p,q){
     var m=text.match(/-?\d+(?:\.\d+)?/);
     u=m?Number(m[0]):0;
   }
-  var t=Array.isArray(p&&p.tiers)?p.tiers:[];
-  t.forEach(function(x){
+  var tiers=Array.isArray(p&&p.tiers)?p.tiers:[];
+  tiers.forEach(function(x){
     if(x&&typeof x==='object'&&Number(q||1)>=Number(x.qty||0)){
       var tp=Number(x.price);
       if(Number.isFinite(tp)&&tp>0)u=tp;
@@ -34,7 +53,19 @@ function loadOrders(){try{return JSON.parse(localStorage.getItem(ORDERS)||'[]')|
 function saveOrders(v){var seen=new Set();localStorage.setItem(ORDERS,JSON.stringify((v||[]).filter(function(o){return o&&o.id&&!seen.has(o.id)&&seen.add(o.id)}).slice(0,50)))}
 function db(){if(!window.supabase||!window.VAPORIX_CONFIG||!window.VAPORIX_CONFIG.SUPABASE_URL)return null;return window.__puffhubDb||(window.__puffhubDb=window.supabase.createClient(window.VAPORIX_CONFIG.SUPABASE_URL,window.VAPORIX_CONFIG.SUPABASE_ANON_KEY))}
 function dateText(){return new Date().toLocaleString('ru-RU',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}
-function showEmpty(){var n=document.getElementById('vaporixEmptyCartNotice');if(!n){n=document.createElement('div');n.id='vaporixEmptyCartNotice';n.innerHTML='<div class="vaporix-empty-box"><div class="vaporix-empty-icon">🛒</div><div class="vaporix-empty-text">Сначала выберите товар</div><button type="button">OK</button></div>';document.body.appendChild(n);n.querySelector('button').addEventListener('click',function(e){e.preventDefault();e.stopPropagation();n.classList.remove('show');document.body.classList.remove('vaporix-empty-notice-open')})}n.classList.add('show');document.body.classList.add('vaporix-empty-notice-open')}
+
+function hideEmpty(){var n=document.getElementById('vaporixEmptyCartNotice');if(n)n.classList.remove('show');document.body.classList.remove('vaporix-empty-notice-open')}
+function showEmpty(){
+  var n=document.getElementById('vaporixEmptyCartNotice');
+  if(!n){
+    n=document.createElement('div');n.id='vaporixEmptyCartNotice';
+    n.innerHTML='<div class="vaporix-empty-box"><div class="vaporix-empty-icon">🛒</div><div class="vaporix-empty-text">Сначала выберите товар</div><button type="button">OK</button></div>';
+    document.body.appendChild(n);
+    n.querySelector('button').addEventListener('click',function(e){e.preventDefault();e.stopPropagation();hideEmpty()});
+  }
+  n.classList.add('show');document.body.classList.add('vaporix-empty-notice-open');
+}
+
 function renderStep4(o){
   var m=document.getElementById('checkoutModal');if(!m)return;
   var box=m.querySelector('.checkout-box');if(!box){box=document.createElement('div');box.className='checkout-box';m.appendChild(box)}
@@ -45,8 +76,11 @@ function renderStep4(o){
   var home=document.createElement('button');home.type='button';home.className='ph-back';home.textContent='Вернуться на Главную';home.onclick=function(){try{if(typeof window.hideCheckout==='function')window.hideCheckout()}catch(e){}try{if(typeof window.showCatalog==='function')window.showCatalog()}catch(e){}};w.appendChild(home);
   m.classList.add('show');document.body.style.overflow='hidden';
 }
+
 async function submitFixed(){
-  var c=getCart();if(!c.length){showEmpty();return false}
+  var c=getCart();
+  if(!c.length){showEmpty();return false}
+  hideEmpty();
   var btn=document.getElementById('phCheckoutAction');if(btn){btn.disabled=true;btn.textContent='Оформляем…'}
   try{
     var customer=loadCustomer();
@@ -55,31 +89,46 @@ async function submitFixed(){
     var delivery=customer.delivery||'DPD';
     var client=db();if(!client)throw new Error('Не удалось подключиться к серверу магазина.');
 
-    // Preserve the real database product id when it exists. If a legacy/static
-    // catalog item has no id, V2 can accept its name+price snapshot.
     var items=c.map(function(x){
       var p=x&&x.product||{};
       var q=Math.max(1,Number(x&&x.qty||1));
       var rawId=p&&p.id;
       var numericId=(rawId!==null&&rawId!==undefined&&String(rawId).trim()!=='')?Number(rawId):null;
       if(!Number.isFinite(numericId))numericId=null;
-      var price=unitPrice(p,q);
-      return {product_id:numericId,product_name:String(p&&p.name||'').trim(),price:price,quantity:q,flavor:x&&x.flavor?String(x.flavor).trim():null};
+      return {product_id:numericId,product_name:String(p&&p.name||'').trim(),price:unitPrice(p,q),quantity:q,flavor:x&&x.flavor?String(x.flavor).trim():null};
     });
 
-    // Do not reject the order in the browser with the old «Некорректный товар»
-    // guard. The Supabase V2 RPC is the authoritative validator and supports
-    // both real DB products and legacy/static catalog snapshots.
-    if(items.some(function(x){return !x.product_name||!(x.price>0)}))console.warn('VAPORIX checkout item normalization:',items);
+    if(items.some(function(x){return !x.product_name||!(x.price>0)}))throw new Error('Некорректные данные товара в корзине.');
 
-    var payload={name:customer.name||'',surname:customer.surname||'',email:customer.email||'',phone:customer.phone||'',country:customer.country||'Germany',city:customer.city||'',postal_code:customer.postcode||'',street:customer.street||'',house:customer.house||'',delivery_method:delivery==='Самовывоз'?'pickup':'dpd',payment_method:payment==='cash'?'bank':'card',items:items};
+    var payload={
+      name:customer.name||'',surname:customer.surname||'',email:customer.email||'',phone:customer.phone||'',
+      country:customer.country||'Germany',city:customer.city||'',postal_code:customer.postcode||'',
+      street:customer.street||'',house:customer.house||'',
+      delivery_method:delivery==='Самовывоз'?'pickup':'dpd',
+      payment_method:payment==='cash'?'bank':'card',items:items
+    };
+
     var result=await client.rpc('create_public_order_v2',{p_payload:payload});
     if(result.error)throw result.error;
     var r=result.data;if(!r||!r.order_number)throw new Error('Сервер не вернул номер заказа.');
-    var o={id:r.order_number,serverId:r.order_id,date:dateText(),status:'Создан',statusKey:'new',customer:{name:customer.name||'',surname:customer.surname||'',country:customer.country||'Germany',phone:customer.phone||'',email:customer.email||''},delivery:{method:delivery,city:customer.city||'',postcode:customer.postcode||'',street:customer.street||'',house:customer.house||''},payment:{method:payment,fee:Number(r.payment_fee||0)},items:c.map(function(x){var p=x.product||{},q=Math.max(1,Number(x.qty||1));return{id:p.id||null,name:p.name||'Товар',flavor:x.flavor||'',qty:q,price:unitPrice(p,q),img:p.img||p.image_url||''}}),subtotal:Number(r.subtotal||0),deliveryFee:Number(r.delivery||0),total:Number(r.total||0)};
+
+    var o={
+      id:r.order_number,serverId:r.order_id,date:dateText(),status:'Создан',statusKey:'new',
+      customer:{name:customer.name||'',surname:customer.surname||'',country:customer.country||'Germany',phone:customer.phone||'',email:customer.email||''},
+      delivery:{method:delivery,city:customer.city||'',postcode:customer.postcode||'',street:customer.street||'',house:customer.house||''},
+      payment:{method:payment,fee:Number(r.payment_fee||0)},
+      items:c.map(function(x){var p=x.product||{},q=Math.max(1,Number(x.qty||1));return{id:p.id||null,name:p.name||'Товар',flavor:x.flavor||'',qty:q,price:unitPrice(p,q),img:p.img||p.image_url||''}}),
+      subtotal:Number(r.subtotal||0),deliveryFee:Number(r.delivery||0),total:Number(r.total||0)
+    };
+
     var all=loadOrders();all.unshift(o);saveOrders(all);
     customer.lastOrder=o;localStorage.setItem(CUSTOMER,JSON.stringify(customer));
-    window.cart=[];try{if(typeof window.renderCart==='function')window.renderCart()}catch(e){}
+
+    /* Clear the real cart array, regardless of whether it is lexical or window.cart. */
+    try{if(typeof cart!=='undefined'&&Array.isArray(cart))cart.length=0}catch(e){}
+    try{if(Array.isArray(window.cart))window.cart.length=0}catch(e){}
+    try{if(typeof window.renderCart==='function')window.renderCart()}catch(e){}
+
     renderStep4(o);return true;
   }catch(e){
     console.error('VAPORIX checkout:',e);
@@ -87,7 +136,20 @@ async function submitFixed(){
     if(btn){btn.disabled=false;btn.textContent='Оформить заказ'}return false;
   }
 }
+
 window.submitCheckoutOrder=submitFixed;
-function install(){document.addEventListener('click',function(e){var t=e.target&&e.target.closest?e.target.closest('#checkoutModal .ph-next'):null;if(!t)return;if((t.textContent||'').trim()!=='Оформить заказ')return;e.preventDefault();e.stopImmediatePropagation();submitFixed();return false},true)}
+
+function install(){
+  /* Keep Step 1/2/3 code reading the same live cart as the product/cart UI. */
+  syncCartBridge();
+  setInterval(syncCartBridge,250);
+
+  document.addEventListener('click',function(e){
+    syncCartBridge();
+    var t=e.target&&e.target.closest?e.target.closest('#checkoutModal .ph-next'):null;if(!t)return;
+    if((t.textContent||'').trim()!=='Оформить заказ')return;
+    e.preventDefault();e.stopImmediatePropagation();submitFixed();return false;
+  },true);
+}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
 })();
