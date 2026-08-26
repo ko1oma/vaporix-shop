@@ -1,29 +1,26 @@
 (function(){
 'use strict';
-/* VAPORIX interaction hotfix V7
-   - A real tap on "Добавить в корзину" works on the FIRST tap.
-   - A swipe/scroll NEVER becomes a click.
-   - The synthetic iOS/Telegram click after a handled pointer tap is ignored.
-   - Checkout buttons keep a real visual gap.
+/* VAPORIX interaction hotfix V8
+   IMPORTANT: never suppress clicks globally.
+   A handled product tap suppresses ONLY the synthetic click on that same
+   product button. Cart, checkout, close and back controls remain native.
 */
-if(window.__VAPORIX_INTERACTION_V7)return;
-window.__VAPORIX_INTERACTION_V7=true;
+if(window.__VAPORIX_INTERACTION_V8)return;
+window.__VAPORIX_INTERACTION_V8=true;
 
 const norm=s=>String(s||'').replace(/\s+/g,' ').trim().toLowerCase();
 const isAdd=el=>{
   const t=norm(el?.textContent);
   return t.includes('добавить в корзину')||t.includes('add to cart')||t.includes('додати в кошик')||t.includes('añadir al carrito')||t.includes('in den warenkorb');
 };
-
-let gesture=null;
-let suppressClicksUntil=0;
-let handledPointerId=null;
 const MOVE_THRESHOLD=10;
+let gesture=null;
+let suppressAddClickButton=null;
 
 function productIndexFromButton(button){
   if(!button)return -1;
   const src=button.getAttribute('onclick')||'';
-  let m=src.match(/addWithQty\s*\(\s*(\d+)\s*\)/i);
+  const m=src.match(/addWithQty\s*\(\s*(\d+)\s*\)/i);
   if(m)return Number(m[1]);
   const card=button.closest('.grid .card');
   if(card){
@@ -45,57 +42,65 @@ function activateAdd(button){
 
 document.addEventListener('pointerdown',e=>{
   const target=e.target?.closest?.('button,a,[role="button"]');
-  gesture={x:e.clientX,y:e.clientY,pointerId:e.pointerId,addButton:isAdd(target)?target:null,moved:false};
+  gesture={
+    x:e.clientX,
+    y:e.clientY,
+    pointerId:e.pointerId,
+    addButton:isAdd(target)?target:null,
+    moved:false
+  };
 },{capture:true,passive:true});
 
 document.addEventListener('pointermove',e=>{
   if(!gesture||gesture.pointerId!==e.pointerId)return;
   if(Math.hypot(e.clientX-gesture.x,e.clientY-gesture.y)>MOVE_THRESHOLD){
     gesture.moved=true;
-    suppressClicksUntil=Date.now()+700;
+    /* If a browser/WebView wrongly emits click after a swipe, suppress it
+       only when the gesture started on an Add-to-cart button. */
+    if(gesture.addButton)suppressAddClickButton=gesture.addButton;
   }
 },{capture:true,passive:true});
 
 document.addEventListener('pointercancel',e=>{
-  if(gesture&&gesture.pointerId===e.pointerId){
-    if(gesture.moved)suppressClicksUntil=Date.now()+700;
-    gesture=null;
-  }
+  if(!gesture||gesture.pointerId!==e.pointerId)return;
+  if(gesture.moved&&gesture.addButton)suppressAddClickButton=gesture.addButton;
+  gesture=null;
 },{capture:true,passive:true});
 
 document.addEventListener('pointerup',e=>{
   if(!gesture||gesture.pointerId!==e.pointerId)return;
   const g=gesture;
-  const isTap=!g.moved&&Math.hypot(e.clientX-g.x,e.clientY-g.y)<=MOVE_THRESHOLD;
   gesture=null;
   if(!g.addButton)return;
-  if(!isTap){suppressClicksUntil=Date.now()+700;return;}
+
+  const isTap=!g.moved&&Math.hypot(e.clientX-g.x,e.clientY-g.y)<=MOVE_THRESHOLD;
+  if(!isTap){
+    suppressAddClickButton=g.addButton;
+    return;
+  }
+
   if(activateAdd(g.addButton)){
-    handledPointerId=e.pointerId;
-    suppressClicksUntil=Date.now()+700;
+    suppressAddClickButton=g.addButton;
     e.preventDefault();
     e.stopPropagation();
     e.stopImmediatePropagation();
   }
 },{capture:true,passive:false});
 
+/* Suppress ONLY the synthetic click generated for the exact product button
+   that we already activated with pointerup. All other clicks are untouched. */
 document.addEventListener('click',e=>{
-  if(Date.now()<suppressClicksUntil){
-    e.preventDefault();
-    e.stopPropagation();
-    e.stopImmediatePropagation();
-    return;
-  }
-  if(handledPointerId!==null){
-    handledPointerId=null;
-    e.preventDefault();
-    e.stopPropagation();
-    e.stopImmediatePropagation();
-  }
+  if(!suppressAddClickButton)return;
+  const target=e.target?.closest?.('button,a,[role="button"]');
+  if(target!==suppressAddClickButton)return;
+  suppressAddClickButton=null;
+  e.preventDefault();
+  e.stopPropagation();
+  e.stopImmediatePropagation();
 },{capture:true,passive:false});
 
 const style=document.createElement('style');
-style.id='vaporix-interaction-v7';
+style.id='vaporix-interaction-v8';
 style.textContent=`
   .checkout-modal .checkout-box{
     overflow-y:auto!important;
