@@ -2,7 +2,7 @@
 window.VAPORIX_CONFIG={
   SUPABASE_URL:'https://kjwfkqexwemztakagihl.supabase.co',
   SUPABASE_ANON_KEY:'sb_publishable_RLAGN9MDHIaVo708txjldQ_b87BYhIV',
-  BUILD:'2026.08.26.15'
+  BUILD:'2026.08.26.16'
 };
 (function(){
   'use strict';
@@ -38,14 +38,14 @@ window.VAPORIX_CONFIG={
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',enrich,{once:true});else enrich();
 })();
 (function(){
-  function loadFixes(){if(document.getElementById('vaporix-runtime-fixes-script'))return;const s=document.createElement('script');s.id='vaporix-runtime-fixes-script';s.src='runtime_fixes.js?v=2026.08.26.15';s.defer=true;(document.head||document.documentElement).appendChild(s)}
+  function loadFixes(){if(document.getElementById('vaporix-runtime-fixes-script'))return;const s=document.createElement('script');s.id='vaporix-runtime-fixes-script';s.src='runtime_fixes.js?v=2026.08.26.16';s.defer=true;(document.head||document.documentElement).appendChild(s)}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',loadFixes,{once:true});else loadFixes();
 })();
 (function(){
-  function loadCheckoutBackFix(){if(document.getElementById('vaporix-checkout-back-fix-script'))return;const s=document.createElement('script');s.id='vaporix-checkout-back-fix-script';s.src='checkout_back_fix.js?v=2026.08.26.15';s.defer=true;(document.head||document.documentElement).appendChild(s)}
+  function loadCheckoutBackFix(){if(document.getElementById('vaporix-checkout-back-fix-script'))return;const s=document.createElement('script');s.id='vaporix-checkout-back-fix-script';s.src='checkout_back_fix.js?v=2026.08.26.16';s.defer=true;(document.head||document.documentElement).appendChild(s)}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',loadCheckoutBackFix,{once:true});else loadCheckoutBackFix();
 })();
 (function(){
-  function loadCheckoutPositionFix(){if(document.getElementById('vaporix-checkout-position-fix-script'))return;const s=document.createElement('script');s.id='vaporix-checkout-position-fix-script';s.src='checkout_position_fix.js?v=2026.08.26.15';s.defer=true;(document.head||document.documentElement).appendChild(s)}
+  function loadCheckoutPositionFix(){if(document.getElementById('vaporix-checkout-position-fix-script'))return;const s=document.createElement('script');s.id='vaporix-checkout-position-fix-script';s.src='checkout_position_fix.js?v=2026.08.26.16';s.defer=true;(document.head||document.documentElement).appendChild(s)}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',loadCheckoutPositionFix,{once:true});else loadCheckoutPositionFix();
 })();
