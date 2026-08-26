@@ -1,11 +1,55 @@
 (function(){
 'use strict';
-if(window.__VAPORIX_FIXES_V4)return;
-window.__VAPORIX_FIXES_V4=true;
+/* VAPORIX mobile input safety layer — V5
+   IMPORTANT: a swipe must NEVER become a click. iOS can synthesize a click
+   after a touch sequence, so we explicitly cancel clicks that followed motion. */
+if(window.__VAPORIX_FIXES_V5)return;
+window.__VAPORIX_FIXES_V5=true;
 
 const $=id=>document.getElementById(id);
 const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
 const norm=s=>String(s||'').replace(/\s+/g,' ').trim().toLowerCase();
+
+/* ─────────────────────────────────────────────────────────────
+   GLOBAL GESTURE GUARD
+   A touch that moves is a SCROLL, never a CLICK.
+   This guard runs in capture phase, therefore it also blocks inline
+   onclick="showCart()" and onclick="addWithQty()" handlers in index.html.
+   ───────────────────────────────────────────────────────────── */
+let touchActive=false,touchMoved=false,touchStartX=0,touchStartY=0,touchStartedAt=0,suppressClicksUntil=0;
+const MOVE_THRESHOLD=8;
+
+document.addEventListener('touchstart',e=>{
+  if(!e.touches||!e.touches.length)return;
+  const t=e.touches[0];
+  touchActive=true;touchMoved=false;touchStartX=t.clientX;touchStartY=t.clientY;touchStartedAt=Date.now();
+},{capture:true,passive:true});
+
+document.addEventListener('touchmove',e=>{
+  if(!touchActive||!e.touches||!e.touches.length)return;
+  const t=e.touches[0];
+  if(Math.abs(t.clientX-touchStartX)>MOVE_THRESHOLD||Math.abs(t.clientY-touchStartY)>MOVE_THRESHOLD){
+    touchMoved=true;
+    suppressClicksUntil=Date.now()+700;
+  }
+},{capture:true,passive:true});
+
+document.addEventListener('touchend',()=>{
+  if(touchActive&&touchMoved)suppressClicksUntil=Math.max(suppressClicksUntil,Date.now()+700);
+  touchActive=false;
+},{capture:true,passive:true});
+
+document.addEventListener('touchcancel',()=>{
+  if(touchActive&&touchMoved)suppressClicksUntil=Math.max(suppressClicksUntil,Date.now()+700);
+  touchActive=false;touchMoved=true;
+},{capture:true,passive:true});
+
+/* Block the synthetic click produced by iOS after a swipe. */
+document.addEventListener('click',e=>{
+  if(Date.now()<suppressClicksUntil){
+    e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();
+  }
+},true);
 
 function productsList(){
   try{
@@ -23,7 +67,7 @@ function cartList(){
 function isAddButton(el){
   if(!el)return false;
   const t=norm(el.textContent);
-  return t.includes('добавить в корзину')||t.includes('add to cart');
+  return t.includes('добавить в корзину')||t.includes('add to cart')||t.includes('додати в кошик')||t.includes('añadir al carrito')||t.includes('in den warenkorb');
 }
 function cardFor(el){
   return el?.closest?.('[data-id],[data-product-id],.card,article,[class*="product-card"],[class*="productCard"],.product')||null;
@@ -110,11 +154,10 @@ async function openFlavorChooser(p){
   };
 }
 
-/* CRITICAL: use CLICK only. pointerdown/touchstart/touchend are deliberately NOT used.
-   On iOS a touch/pointer event also fires while a finger is beginning a scroll.
-   The previous implementation therefore opened the cart/chooser during scrolling. */
+/* Add-to-cart is handled by CLICK only, and only after the gesture guard above. */
 let lastClick=0;
 document.addEventListener('click',function(e){
+  if(Date.now()<suppressClicksUntil)return;
   const b=e.target?.closest?.('button,a,[role="button"]');
   if(!isAddButton(b))return;
   const now=Date.now();if(now-lastClick<500)return;
@@ -145,12 +188,14 @@ function profileOrders(){
   if(!a.length){list.innerHTML='<div class="ph-no-orders">У вас пока нет заказов.<br><small>После оформления заказа он появится здесь.</small></div>';return}
   list.innerHTML=a.map(o=>'<div class="ph-order-card"><b>Заказ '+esc(o.number||o.id||'')+'</b></div>').join('');
 }
+
 const style=document.createElement('style');style.textContent=`
-.checkout-modal{overflow:hidden!important;height:100dvh!important;max-height:100dvh!important}.checkout-modal .checkout-box{position:absolute!important;inset:0!important;left:50%!important;transform:translateX(-50%)!important;width:min(820px,100%)!important;height:100dvh!important;max-height:100dvh!important;overflow-y:auto!important;overflow-x:hidden!important;-webkit-overflow-scrolling:touch!important;touch-action:pan-y!important;overscroll-behavior:contain!important;padding:0 16px 130px!important}.checkout-modal .checkout-box input,.checkout-modal .checkout-box select{font-size:16px!important}
+.checkout-modal{overflow:hidden!important;height:100dvh!important;max-height:100dvh!important}.checkout-modal .checkout-box{position:absolute!important;inset:0!important;left:50%!important;transform:translateX(-50%)!important;width:min(820px,100%)!important;height:100dvh!important;max-height:100dvh!important;overflow-y:auto!important;overflow-x:hidden!important;-webkit-overflow-scrolling:touch!important;touch-action:pan-y!important;overscroll-behavior:contain!important;padding:0 16px 130px!important}
 #vaporixFlavorFix{position:fixed;inset:0;z-index:30000;display:grid;place-items:center;padding:18px;box-sizing:border-box;background:rgba(0,0,0,.74);backdrop-filter:blur(10px);touch-action:none}.vfx-box{width:min(560px,100%);max-height:90dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;box-sizing:border-box;background:#29292b;border:1px solid #4a4a50;border-radius:25px;padding:22px;color:#fff;touch-action:pan-y}.vfx-head{display:flex;justify-content:space-between;gap:12px}.vfx-head small,.vfx-label{color:#999;font-size:13px;font-weight:800}.vfx-head h2{margin:3px 0 0;font-size:23px}.vfx-close{width:40px;height:40px;border-radius:12px;background:#1a1a1c;border:1px solid #3d3d43;color:#fff;font-size:18px}.vfx-label{margin:18px 0 9px}.vfx-list{display:grid;grid-template-columns:1fr 1fr;gap:9px}.vfx-option{min-height:58px;border-radius:15px;border:1px solid #4a4a52;background:#19191b;color:#fff;padding:11px 13px;text-align:left}.vfx-option b,.vfx-option small{display:block}.vfx-option small{margin-top:4px;color:#8cff00;font-size:11px}.vfx-option.active{border-color:#965dff;background:#351579}.vfx-option:disabled{opacity:.4}.vfx-qty{height:54px;display:grid;grid-template-columns:54px 1fr 54px;align-items:center;text-align:center;border:1px solid #4a4a50;border-radius:15px;background:#19191b;overflow:hidden}.vfx-qty button{height:100%;background:transparent;color:#fff;font-size:25px;border:0}.vfx-add{width:100%;height:56px;margin-top:18px;border-radius:16px;background:linear-gradient(100deg,#ff299e,#7c42ff);color:#fff;font-weight:900;font-size:16px;border:0}.vfx-add:disabled{opacity:.45}
 #phOrdersSection{display:block!important;margin:18px 0 24px!important;padding:16px!important;border:1.5px solid #7044b8!important;border-radius:22px!important;background:linear-gradient(180deg,rgba(54,25,93,.38),rgba(25,25,29,.82))!important;box-shadow:0 0 0 1px rgba(160,100,255,.08),0 12px 35px rgba(0,0,0,.22)!important}.ph-orders-title{font-size:20px!important;font-weight:900!important;margin:0 0 14px!important;color:#fff!important}.ph-orders-count{display:inline-grid;place-items:center;min-width:30px;height:30px;padding:0 8px;border-radius:999px;background:#3a1777;border:1px solid #7044b8;color:#c6a5ff;font-size:13px}.ph-no-orders{padding:18px 14px;border:1px dashed #5a5963;border-radius:16px;background:#171719;color:#aaa;text-align:center}.ph-order-card{padding:15px;border:1.5px solid #3f3d49!important;border-radius:18px!important;background:#171719!important;margin-bottom:10px}
 @media(max-width:520px){.vfx-list{grid-template-columns:1fr}}
-`;document.head.appendChild(style);
+`;
+document.head.appendChild(style);
 
 const observer=new MutationObserver(()=>armButtons());
 function run(){armButtons();profileOrders();fixCheckoutScroll();if(!observer.__started){observer.observe(document.body,{childList:true,subtree:true});observer.__started=true}}
