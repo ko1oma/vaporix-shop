@@ -9,6 +9,11 @@ base.onload=function(){
   actionFix.onload=function(){
     var profileFix=document.createElement('script');
     profileFix.src='runtime_profile_v16.js?v=20260827-18';
+    profileFix.onload=function(){
+      var stability=document.createElement('script');
+      stability.src='runtime_v18_stability.js?v=20260827-18';
+      document.body.appendChild(stability);
+    };
     document.body.appendChild(profileFix);
   };
   document.body.appendChild(actionFix);
