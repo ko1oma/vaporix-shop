@@ -1,17 +1,17 @@
 (function(){
 'use strict';
-/* Checkout runtime loader — V15 cache bust. */
+/* Checkout runtime loader — V16 stable order/profile flow. */
 var base=document.createElement('script');
-base.src='order_flow_runtime_original.js?v=20260827-15';
+base.src='order_flow_runtime_original.js?v=20260827-16';
 base.onload=function(){
-  var fix=document.createElement('script');
-  fix.src='runtime_fixes.js?v=20260827-15';
-  fix.onload=function(){
-    var actionFix=document.createElement('script');
-    actionFix.src='runtime_v13_checkout_action.js?v=20260827-15';
-    document.body.appendChild(actionFix);
+  var actionFix=document.createElement('script');
+  actionFix.src='runtime_v13_checkout_action.js?v=20260827-16';
+  actionFix.onload=function(){
+    var profileFix=document.createElement('script');
+    profileFix.src='runtime_profile_v16.js?v=20260827-16';
+    document.body.appendChild(profileFix);
   };
-  document.body.appendChild(fix);
+  document.body.appendChild(actionFix);
 };
 document.body.appendChild(base);
 })();
