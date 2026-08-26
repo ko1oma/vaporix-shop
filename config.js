@@ -2,7 +2,7 @@
 window.VAPORIX_CONFIG={
   SUPABASE_URL:'https://kjwfkqexwemztakagihl.supabase.co',
   SUPABASE_ANON_KEY:'sb_publishable_RLAGN9MDHIaVo708txjldQ_b87BYhIV',
-  BUILD:'2026.08.26.4'
+  BUILD:'2026.08.26.5'
 };
 
 /*
@@ -47,4 +47,17 @@ window.VAPORIX_CONFIG={
     }catch(e){console.warn('PUFF HUB flavor stock sync failed:',e)}
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',enrich,{once:true});else enrich();
+})();
+
+/* Runtime fixes are loaded separately so the 1.8 MB legacy index does not need to be rewritten. */
+(function(){
+  function loadFixes(){
+    if(document.getElementById('vaporix-runtime-fixes-script'))return;
+    const s=document.createElement('script');
+    s.id='vaporix-runtime-fixes-script';
+    s.src='runtime_fixes.js?v=2026.08.26.5';
+    s.defer=true;
+    (document.head||document.documentElement).appendChild(s);
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',loadFixes,{once:true});else loadFixes();
 })();
