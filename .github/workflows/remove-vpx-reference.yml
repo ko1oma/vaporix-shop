@@ -1,0 +1,35 @@
+name: Remove legacy checkout reference
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  cleanup:
+    if: "!contains(github.event.head_commit.message, 'Remove legacy checkout reference')"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Remove legacy script tag
+        shell: python
+        run: |
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          s=s.replace('<script src="vpx-checkout.js"></script>\n','')
+          s=s.replace('<script src="vpx-checkout.js"></script>','')
+          p.write_text(s,encoding='utf-8')
+      - name: Commit cleanup
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'Remove legacy checkout reference' || exit 0
+          git push
+      - name: Remove workflow
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/remove-vpx-reference.yml
+          git commit -m 'Remove cleanup workflow' || exit 0
+          git push
