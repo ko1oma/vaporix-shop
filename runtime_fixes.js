@@ -21,7 +21,6 @@ function checkoutOpen(){
   const cs=getComputedStyle(m);
   return m.classList.contains('show')&&cs.display!=='none'&&cs.visibility!=='hidden';
 }
-function checkoutFormOpen(){return checkoutOpen()&&!!q('#checkoutModal .ph-form-card')}
 function hideEmptyNotice(){const n=$('vaporixEmptyCartNotice');if(n)n.classList.remove('show');document.body.classList.remove('vaporix-empty-notice-open')}
 function emptyNotice(){
   let n=$('vaporixEmptyCartNotice');
@@ -38,7 +37,6 @@ function installCSS(){
   if($('vaporix-runtime-repair-v7'))return;
   const s=document.createElement('style');s.id='vaporix-runtime-repair-v7';
   s.textContent=`
-/* CHECKOUT: one real scroll container, no horizontal offset, buttons never overlap. */
 #checkoutModal,.checkout-modal{position:fixed!important;inset:0!important;width:100vw!important;height:100dvh!important;max-width:none!important;max-height:none!important;transform:none!important;margin:0!important;box-sizing:border-box!important;overflow:hidden!important}
 #checkoutModal .checkout-box,.checkout-modal .checkout-box{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;min-width:0!important;min-height:0!important;max-width:none!important;max-height:none!important;box-sizing:border-box!important;overflow-x:hidden!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch!important;overscroll-behavior-y:contain!important;touch-action:pan-y!important;padding:24px 16px calc(36px + env(safe-area-inset-bottom))!important}
 #checkoutModal #checkoutSummary,.checkout-modal #checkoutSummary{width:100%!important;min-width:0!important;box-sizing:border-box!important}
@@ -49,18 +47,12 @@ function installCSS(){
 #checkoutModal .ph-back,#checkoutModal .ph-cancel-checkout{background:#21172d!important;border:1px solid #7045a5!important;color:#d3b6ff!important}
 #checkoutModal .ph-next{height:60px!important}
 #checkoutModal input,#checkoutModal select,.checkout-modal input,.checkout-modal select{max-width:100%!important;box-sizing:border-box!important}
-
-/* ORDER DETAIL: content scrolls, Back is always a separate bottom control. */
 #orderDetailModal .ph-order-detail-box{width:min(620px,94vw)!important;height:min(90dvh,760px)!important;max-height:90dvh!important;display:flex!important;flex-direction:column!important;overflow:hidden!important;box-sizing:border-box!important;padding:17px!important}
 #orderDetailModal #orderDetailContent{min-height:0!important;flex:1 1 auto!important;overflow-y:auto!important;overflow-x:hidden!important;-webkit-overflow-scrolling:touch!important;padding-bottom:4px!important}
 #orderDetailModal .ph-detail-back{flex:0 0 auto!important;width:100%!important;height:54px!important;margin:12px 0 0!important;border-radius:16px!important;background:linear-gradient(100deg,#3b1a67,#5d2a9d)!important;border:1px solid #8d5ad2!important;color:#eadbff!important;font-size:17px!important;font-weight:900!important;position:static!important;box-sizing:border-box!important;touch-action:manipulation!important}
-
-/* PROFILE: settings first, orders second. Keep the bottom navigation from covering cards. */
 #profile{padding-bottom:calc(118px + env(safe-area-inset-bottom))!important;box-sizing:border-box!important;overflow-x:hidden!important}
 #phOrdersSection{display:block!important;width:100%!important;box-sizing:border-box!important;margin:28px 0 24px!important;clear:both!important}
 #phOrdersSection .ph-orders-title{display:block!important;margin:0 0 12px!important}
-
-/* Compact order cards: fixed grid, ellipsis for long IDs, no metadata collision/overflow. */
 #phOrdersSection .ph-order-card{display:grid!important;grid-template-columns:56px minmax(0,1fr) auto!important;grid-template-rows:auto auto!important;column-gap:12px!important;row-gap:7px!important;width:100%!important;min-width:0!important;max-width:100%!important;min-height:84px!important;box-sizing:border-box!important;margin:0 0 10px!important;padding:12px!important;overflow:hidden!important;text-align:left!important;background:var(--panel,#151517)!important;border:1px solid var(--line,#3b3b43)!important;border-radius:18px!important;color:var(--text,#fff)!important}
 #phOrdersSection .ph-order-top{display:contents!important}
 #phOrdersSection .ph-order-id{grid-column:2!important;grid-row:1!important;min-width:0!important;max-width:100%!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;font-size:13px!important;line-height:1.25!important;font-weight:900!important}
@@ -72,8 +64,6 @@ function installCSS(){
 #phOrdersSection .ph-order-products-preview{grid-column:1!important;grid-row:1 / span 2!important;display:flex!important;align-items:center!important;justify-content:center!important;width:56px!important;height:60px!important;margin:0!important;min-width:0!important;overflow:hidden!important}
 #phOrdersSection .ph-order-thumb{width:50px!important;height:58px!important;max-width:50px!important;max-height:58px!important;flex:0 0 auto!important;border-radius:10px!important;object-fit:contain!important}
 @media(max-width:520px){#phOrdersSection .ph-order-card{grid-template-columns:54px minmax(0,1fr) auto!important;column-gap:10px!important;padding:11px!important}#phOrdersSection .ph-order-products-preview{width:54px!important;height:58px!important}#phOrdersSection .ph-order-thumb{width:48px!important;height:56px!important}#phOrdersSection .ph-order-id{font-size:12px!important}#phOrdersSection .ph-order-total{font-size:14px!important}}
-
-/* Empty cart guard dialog. */
 #vaporixEmptyCartNotice{position:fixed!important;inset:0!important;z-index:5000!important;display:flex!important;align-items:center!important;justify-content:center!important;padding:20px!important;background:rgba(0,0,0,.55)!important;opacity:0!important;pointer-events:none!important;transition:opacity .12s ease!important}
 #vaporixEmptyCartNotice.show{opacity:1!important;pointer-events:auto!important}
 .vaporix-empty-box{width:min(390px,calc(100vw - 40px));padding:24px;border-radius:24px;background:#242428;border:1px solid #55515f;box-shadow:0 25px 80px rgba(0,0,0,.65);text-align:center;color:#fff;box-sizing:border-box}
@@ -137,14 +127,10 @@ function installFunctionGuards(){
     return old.apply(this,arguments);
   });
 
-  wrapOnce('showProfile','__vaporixProfileRepairV7',old=>async function(){
+  wrapOnce('showProfile','__vaporixProfileRepairV7',old=>function(){
     const r=old.apply(this,arguments);
-    try{await r}catch(e){}
-    const p=$('profile');if(p){p.hidden=false;p.style.removeProperty('display')}
-    if(typeof window.ensureProfile==='function')try{window.ensureProfile()}catch(e){}
-    moveOrdersBelowSettings();renderOrdersSafe();
-    setTimeout(()=>{moveOrdersBelowSettings();renderOrdersSafe()},0);
-    setTimeout(()=>{moveOrdersBelowSettings();renderOrdersSafe()},150);
+    const repair=()=>{const p=$('profile');if(p){p.hidden=false;p.style.removeProperty('display')}moveOrdersBelowSettings()};
+    repair();setTimeout(repair,0);setTimeout(repair,150);setTimeout(repair,500);
     return r;
   });
 
@@ -153,23 +139,20 @@ function installFunctionGuards(){
   });
 }
 
-function renderOrdersSafe(){
-  try{if(typeof window.renderOrders==='function')window.renderOrders()}catch(e){}
-}
-
 function installButtonSafety(){
+  if(window.__VAPORIX_BUTTON_SAFETY_V7)return;
+  window.__VAPORIX_BUTTON_SAFETY_V7=true;
   document.addEventListener('click',function(e){
     const t=e.target.closest&&e.target.closest('#phCheckoutAction');
-    if(!t)return;
-    if(!cartHasItems()){
-      e.preventDefault();e.stopImmediatePropagation();hideEmptyNotice();emptyNotice();
-    }
+    if(!t||cartHasItems())return;
+    e.preventDefault();e.stopImmediatePropagation();hideEmptyNotice();emptyNotice();
   },true);
 }
 
 function boot(){
   installCSS();
   installFunctionGuards();
+  installButtonSafety();
   moveOrdersBelowSettings();
   normalizeCheckout();
   if($('orderDetailModal')?.classList.contains('show'))addOrderDetailBack();
